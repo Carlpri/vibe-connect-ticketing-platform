@@ -1,12 +1,28 @@
-// ===========================================
-// Orders Module — Routes (Freddy)
-// ===========================================
-// Handles: POST   /api/orders              (create order)
-//          GET    /api/orders/:id          (order detail)
-//          GET    /api/orders/my           (user's orders)
-//          POST   /api/orders/:id/pay      (initiate payment)
-//          GET    /api/orders/:id/ticket   (get digital ticket + QR)
-//          POST   /api/orders/:id/checkin  (validate QR & check-in)
-// ===========================================
+import { Router } from 'express';
 
-export {};
+
+// Orders Module — Routes (Freddy)
+
+// Domain: Orders, Payments, Digital Tickets, QR codes, Check-in
+
+// Assigned Developer: Freddy
+
+//
+// Reserved Endpoints:
+// - POST /api/orders             (create order)
+// - GET  /api/orders/my          (get attendee orders)
+// - GET  /api/orders/:id         (get order details)
+// - POST /api/orders/:id/pay     (process payment e.g. M-Pesa)
+// - POST /api/orders/checkin     (validate QR ticket code for entry)
+//
+
+const router = Router();
+
+// Placeholder route for health/scaffolding
+router.get('/', (_req, res) => {
+  res.json({
+    message: 'Orders module initialized. Awaiting implementation by Freddy.',
+  });
+});
+
+export default router;

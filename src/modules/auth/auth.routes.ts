@@ -1,10 +1,16 @@
-// ===========================================
-// Auth Module — Routes (Carlos)
-// ===========================================
-// Handles: POST /api/auth/register
-//          POST /api/auth/login
-//          GET  /api/auth/me
-//          POST /api/auth/logout
-// ===========================================
+import { Router } from 'express';
+import { AuthController } from './auth.controller';
+import { registerSchema, loginSchema } from './auth.schemas';
+import { validateBody } from '../../shared/middleware/validate';
+import { authenticate } from './auth.middleware';
 
-export {};
+const router = Router();
+
+// Public routes
+router.post('/register', validateBody(registerSchema), AuthController.register);
+router.post('/login', validateBody(loginSchema), AuthController.login);
+
+// Protected routes
+router.get('/me', authenticate, AuthController.getMe);
+
+export default router;

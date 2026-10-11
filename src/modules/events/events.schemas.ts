@@ -1,8 +1,9 @@
-// ===========================================
+
 // Events Module — Zod Schemas (Phillip)
-// ===========================================
-// Request validation schemas for event endpoints.
-// Example: createEventSchema, updateEventSchema
-// ===========================================
+
+// Domain: Events and Ticket Inventory
+
+// Assigned Developer: Phillip
+
 
 export {};

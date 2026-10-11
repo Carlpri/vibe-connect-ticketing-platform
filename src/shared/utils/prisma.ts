@@ -1,9 +1,13 @@
-// ===========================================
-// Shared — Prisma Client Instance
-// ===========================================
-// Single Prisma Client instance shared across
-// all modules. Ensures one database connection
-// pool for the entire application.
-// ===========================================
+import { PrismaClient } from '@prisma/client';
 
-export {};
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}

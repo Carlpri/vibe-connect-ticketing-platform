@@ -1,8 +1,9 @@
-// ===========================================
+
 // Orders Module — Controller (Freddy)
-// ===========================================
-// Handles HTTP request/response logic for
-// order, payment, and check-in endpoints.
-// ===========================================
+
+// Domain: Orders, Payments, Digital Tickets, QR codes, Check-in
+
+// Assigned Developer: Freddy
+
 
 export {};

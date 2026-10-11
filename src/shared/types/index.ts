@@ -1,8 +1,13 @@
-// ===========================================
-// Shared — TypeScript Type Definitions
-// ===========================================
-// Common types and interfaces used across
-// multiple modules.
-// ===========================================
+import { Request } from 'express';
 
-export {};
+export type UserRole = 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
+
+export interface TokenPayload {
+  userId: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface AuthenticatedRequest extends Request {
+  user?: TokenPayload;
+}

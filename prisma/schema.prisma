@@ -1,14 +1,12 @@
 // =============================================
 // Prisma Schema — VIBE-CONNECT Database
 // =============================================
-// This schema defines the database structure.
-// It will be populated with models in the next step.
+// Carlos's Domain:
+// - Backend Foundation, Users, Authentication & Security
 //
-// To apply changes:
-//   npx prisma migrate dev --name <migration_name>
-//
-// To view data:
-//   npx prisma studio
+// Database Configuration:
+// - Direct URL: Supabase Session pooler (port 5432) for migrations
+// - Transaction URL: Supabase Transaction pooler (port 6543) for pooled queries
 // =============================================
 
 generator client {
@@ -21,17 +19,38 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Models will be added here in the next step.
-// Each developer's module maps to specific models:
-//
-// Carlos (auth):
-//   - User
-//
-// Phillip (events):
-//   - Event
-//   - TicketType
-//
-// Freddy (orders):
-//   - Order
-//   - OrderItem
-//   - Ticket (digital ticket with QR)
+// -------------------------------------------------------------
+// Carlos's Domain: User Roles & Authentication
+// -------------------------------------------------------------
+
+enum UserRole {
+  ATTENDEE
+  ORGANIZER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         UserRole  @default(ATTENDEE)
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  @@map("users")
+}
+
+// -------------------------------------------------------------
+// Phillip's Domain (To be implemented by Phillip):
+// - Event
+// - TicketType
+// -------------------------------------------------------------
+
+// -------------------------------------------------------------
+// Freddy's Domain (To be implemented by Freddy):
+// - Order
+// - OrderItem
+// - Ticket (Digital QR ticket & check-in)
+// -------------------------------------------------------------

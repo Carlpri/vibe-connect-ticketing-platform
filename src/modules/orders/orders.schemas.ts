@@ -1,8 +1,9 @@
-// ===========================================
+
 // Orders Module — Zod Schemas (Freddy)
-// ===========================================
-// Request validation schemas for order endpoints.
-// Example: createOrderSchema, paymentSchema
-// ===========================================
+
+// Domain: Orders, Payments, Digital Tickets, QR codes, Check-in
+
+// Assigned Developer: Freddy
+
 
 export {};
