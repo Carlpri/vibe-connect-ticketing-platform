@@ -1,0 +1,37 @@
+{
+  "name": "vibe-connect",
+  "version": "0.1.0",
+  "description": "Kenyan Event Discovery & Digital Ticketing Platform",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "node dist/server.js",
+    "lint": "eslint src/",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Carlpri/vibe-connect-ticketing-platform.git"
+  },
+  "keywords": [
+    "events",
+    "ticketing",
+    "kenya",
+    "express",
+    "typescript",
+    "prisma"
+  ],
+  "author": "Vibe-Connect Team",
+  "license": "UNLICENSED",
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/Carlpri/vibe-connect-ticketing-platform/issues"
+  },
+  "homepage": "https://github.com/Carlpri/vibe-connect-ticketing-platform#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
