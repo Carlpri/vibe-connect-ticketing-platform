@@ -1,4 +1,4 @@
-# 🎶 VIBE-CONNECT
+#  VIBE-CONNECT
 
 **Kenyan Event Discovery & Digital Ticketing Platform**
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 Tech Stack
+##  Tech Stack
 
 | Layer        | Technology                                |
 |--------------|-------------------------------------------|
