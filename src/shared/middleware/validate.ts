@@ -2,6 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
 import { sendError } from '../utils/apiResponse';
 
+const formatZodErrors = (error: ZodError) => {
+  return error.errors.map((e) => ({
+    field: e.path.join('.') || 'root',
+    message: e.message,
+  }));
+};
+
 export const validateBody = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
@@ -9,11 +16,7 @@ export const validateBody = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formatted = error.errors.map((e) => ({
-          field: e.path.join('.'),
-          message: e.message,
-        }));
-        sendError(res, 'Validation failed', 400, formatted);
+        sendError(res, 'Validation failed', 400, formatZodErrors(error));
         return;
       }
       next(error);
@@ -28,11 +31,7 @@ export const validateQuery = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formatted = error.errors.map((e) => ({
-          field: e.path.join('.'),
-          message: e.message,
-        }));
-        sendError(res, 'Validation failed on query parameters', 400, formatted);
+        sendError(res, 'Validation failed on query parameters', 400, formatZodErrors(error));
         return;
       }
       next(error);
@@ -47,11 +46,7 @@ export const validateParams = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formatted = error.errors.map((e) => ({
-          field: e.path.join('.'),
-          message: e.message,
-        }));
-        sendError(res, 'Validation failed on path parameters', 400, formatted);
+        sendError(res, 'Validation failed on path parameters', 400, formatZodErrors(error));
         return;
       }
       next(error);

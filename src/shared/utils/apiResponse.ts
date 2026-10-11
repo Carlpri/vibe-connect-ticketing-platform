@@ -1,22 +1,29 @@
 import { Response } from 'express';
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  error?: string | any;
+export interface ApiSuccessResponse<T = any> {
+  success: true;
+  data: T;
+  message: string;
 }
+
+export interface ApiErrorResponse {
+  success: false;
+  message: string;
+  errors?: any;
+}
+
+export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 export const sendSuccess = <T>(
   res: Response,
   data?: T,
-  message?: string,
+  message = 'Operation completed successfully',
   statusCode = 200
 ): Response => {
-  const payload: ApiResponse<T> = {
+  const payload: ApiSuccessResponse<T> = {
     success: true,
-    ...(message ? { message } : {}),
-    ...(data !== undefined ? { data } : {}),
+    data: data !== undefined ? data : ({} as T),
+    message,
   };
   return res.status(statusCode).json(payload);
 };
@@ -25,12 +32,16 @@ export const sendError = (
   res: Response,
   message: string,
   statusCode = 400,
-  details?: any
+  errors?: any
 ): Response => {
-  const payload: ApiResponse = {
+  const payload: ApiErrorResponse = {
     success: false,
-    error: message,
-    ...(details !== undefined ? { details } : {}),
+    message,
   };
+
+  if (errors !== undefined && errors !== null) {
+    payload.errors = errors;
+  }
+
   return res.status(statusCode).json(payload);
 };

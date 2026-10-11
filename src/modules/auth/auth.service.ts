@@ -4,6 +4,7 @@ import { prisma } from '../../shared/utils/prisma';
 import { env } from '../../config/env';
 import { RegisterInput, LoginInput } from './auth.schemas';
 import { TokenPayload, UserRole } from '../../shared/types';
+import { AppError } from '../../shared/errors/AppError';
 
 export class AuthService {
   static async register(input: RegisterInput) {
@@ -12,7 +13,7 @@ export class AuthService {
     });
 
     if (existing) {
-      throw { statusCode: 409, message: 'An account with this email already exists' };
+      throw new AppError('An account with this email already exists', 409);
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -51,12 +52,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw { statusCode: 401, message: 'Invalid email or password' };
+      throw new AppError('Invalid email or password', 401);
     }
 
     const isMatch = await bcrypt.compare(input.password, user.passwordHash);
     if (!isMatch) {
-      throw { statusCode: 401, message: 'Invalid email or password' };
+      throw new AppError('Invalid email or password', 401);
     }
 
     const token = this.generateToken({
@@ -92,7 +93,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw { statusCode: 404, message: 'User not found' };
+      throw new AppError('User not found', 404);
     }
 
     return user;
