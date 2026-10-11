@@ -7,7 +7,7 @@ export class AuthController {
   static async register(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await AuthService.register(req.body);
-      sendSuccess(res, result, 'User registered successfully', 201);
+      sendSuccess(res, result, 'User registered successfully. Please verify your email.', 201);
     } catch (error) {
       next(error);
     }
@@ -26,6 +26,42 @@ export class AuthController {
     try {
       const user = await AuthService.getCurrentUser(req.user!.userId);
       sendSuccess(res, user, 'User profile fetched successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyEmail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AuthService.verifyEmail(req.body);
+      sendSuccess(res, result, 'Email verified successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async resendVerificationEmail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AuthService.resendVerificationEmail(req.body);
+      sendSuccess(res, result, result.message, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async sendPhoneOtp(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AuthService.sendPhoneOtp(req.user!.userId, req.body);
+      sendSuccess(res, result, 'Verification OTP sent successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyPhone(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AuthService.verifyPhone(req.user!.userId, req.body);
+      sendSuccess(res, result, 'Phone number verified successfully', 200);
     } catch (error) {
       next(error);
     }

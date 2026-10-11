@@ -3,6 +3,7 @@
 // =============================================
 // Carlos's Domain:
 // - Backend Foundation, Users, Authentication & Security
+// - Email & Phone Contact Verification Lifecycle
 //
 // Database Configuration:
 // - Direct URL: Supabase Session pooler (port 5432) for migrations
@@ -34,11 +35,27 @@ model User {
   email        String    @unique
   passwordHash String
   name         String
-  phone        String?
+  phone        String?   @unique
   role         UserRole  @default(ATTENDEE)
   createdAt    DateTime  @default(now()) @db.Timestamptz
   updatedAt    DateTime  @updatedAt @db.Timestamptz
 
+  // Verification Status Flags
+  emailVerified Boolean @default(false)
+  phoneVerified Boolean @default(false)
+
+  // Email Verification Fields (tokens stored as SHA-256 hashes only)
+  emailVerificationTokenHash       String?
+  emailVerificationExpiresAt       DateTime? @db.Timestamptz
+  emailVerificationCooldownUntil   DateTime? @db.Timestamptz
+
+  // Phone OTP Verification Fields (OTPs stored as SHA-256 hashes only)
+  phoneVerificationOtpHash         String?
+  phoneVerificationExpiresAt       DateTime? @db.Timestamptz
+  phoneVerificationAttempts        Int       @default(0)
+  phoneVerificationCooldownUntil   DateTime? @db.Timestamptz
+
+  @@index([emailVerificationTokenHash])
   @@map("users")
 }
 

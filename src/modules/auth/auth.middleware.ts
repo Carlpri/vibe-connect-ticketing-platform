@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { sendError } from '../../shared/utils/apiResponse';
 import { AuthenticatedRequest, TokenPayload, UserRole } from '../../shared/types';
+import { prisma } from '../../shared/utils/prisma';
 
+/**
+ * Validates JWT Bearer token and attaches decoded payload to req.user.
+ */
 export const authenticate = (
   req: AuthenticatedRequest,
   res: Response,
@@ -27,6 +31,9 @@ export const authenticate = (
   }
 };
 
+/**
+ * Restricts access to specific user roles (e.g. ORGANIZER, ADMIN).
+ */
 export const requireRole = (...roles: UserRole[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -41,4 +48,98 @@ export const requireRole = (...roles: UserRole[]) => {
 
     next();
   };
+};
+
+/**
+ * Ensures user has verified their email address by inspecting persisted database state.
+ */
+export const requireEmailVerified = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!req.user) {
+    sendError(res, 'Unauthorized', 401);
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { emailVerified: true },
+  });
+
+  if (!user || !user.emailVerified) {
+    sendError(res, 'Email verification required to access this resource', 403);
+    return;
+  }
+
+  next();
+};
+
+/**
+ * Ensures user has verified their phone number by inspecting persisted database state.
+ */
+export const requirePhoneVerified = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!req.user) {
+    sendError(res, 'Unauthorized', 401);
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { phoneVerified: true },
+  });
+
+  if (!user || !user.phoneVerified) {
+    sendError(res, 'Phone number verification required to access this resource', 403);
+    return;
+  }
+
+  next();
+};
+
+/**
+ * Ensures user has completed BOTH email and phone verification before accessing protected actions
+ * such as purchasing tickets or creating orders.
+ */
+export const requireFullyVerified = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!req.user) {
+    sendError(res, 'Unauthorized', 401);
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { emailVerified: true, phoneVerified: true },
+  });
+
+  if (!user) {
+    sendError(res, 'User not found', 404);
+    return;
+  }
+
+  if (!user.emailVerified && !user.phoneVerified) {
+    sendError(res, 'Both email and phone number verification are required to complete this action', 403);
+    return;
+  }
+
+  if (!user.emailVerified) {
+    sendError(res, 'Email verification required to complete this action', 403);
+    return;
+  }
+
+  if (!user.phoneVerified) {
+    sendError(res, 'Phone number verification required to complete this action', 403);
+    return;
+  }
+
+  next();
 };
