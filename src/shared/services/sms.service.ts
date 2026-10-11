@@ -13,7 +13,42 @@ export interface SmsDeliveryResult {
   isMocked?: boolean;
 }
 
+export interface SmsRequestOptions {
+  username: string;
+  to: string;
+  message: string;
+  senderId?: string;
+}
+
 export class SmsService {
+  /**
+   * Constructs the API endpoint and URLSearchParams payload for Africa's Talking.
+   * Handles Sandbox vs Production endpoints and respects Africa's Talking sandbox
+   * sender rules (omits custom sender ID in sandbox mode or when sender ID is not specified).
+   */
+  static buildRequestPayload(options: SmsRequestOptions): { endpoint: string; bodyParams: URLSearchParams } {
+    const isSandbox = options.username.trim().toLowerCase() === 'sandbox';
+    const endpoint = isSandbox
+      ? 'https://api.sandbox.africastalking.com/version1/messaging'
+      : 'https://api.africastalking.com/version1/messaging';
+
+    const bodyParams = new URLSearchParams();
+    bodyParams.append('username', options.username.trim());
+    bodyParams.append('to', options.to);
+    bodyParams.append('message', options.message);
+
+    const senderId = options.senderId?.trim();
+    // In Africa's Talking sandbox mode, custom alphanumeric sender IDs are not permitted
+    // and cause requests to fail. Omitting 'from' allows Africa's Talking to route via
+    // its default sandbox shortcode.
+    // In production, 'from' is only appended when a non-empty sender ID is configured.
+    if (senderId && (!isSandbox || /^\d+$/.test(senderId))) {
+      bodyParams.append('from', senderId);
+    }
+
+    return { endpoint, bodyParams };
+  }
+
   /**
    * Sends an SMS message using Africa's Talking SMS API (or safe mock fallback).
    */
@@ -25,8 +60,9 @@ export class SmsService {
   static async sendSms(params: SendSmsParams): Promise<SmsDeliveryResult> {
     const { to, message } = params;
 
-    const apiKey = env.AFRICASTALKING_API_KEY;
-    const username = env.AFRICASTALKING_USERNAME;
+    const apiKey = env.AT_API_KEY || env.AFRICASTALKING_API_KEY;
+    const username = env.AT_USERNAME || env.AFRICASTALKING_USERNAME;
+    const senderId = env.AT_SENDER_ID || env.AFRICASTALKING_SENDER_ID;
 
     const hasValidCredentials =
       Boolean(apiKey && username && !apiKey.includes('your_api_key'));
@@ -62,18 +98,12 @@ export class SmsService {
     }
 
     try {
-      const isSandbox = username.toLowerCase() === 'sandbox';
-      const endpoint = isSandbox
-        ? 'https://api.sandbox.africastalking.com/version1/messaging'
-        : 'https://api.africastalking.com/version1/messaging';
-
-      const bodyParams = new URLSearchParams();
-      bodyParams.append('username', username);
-      bodyParams.append('to', to);
-      bodyParams.append('message', message);
-      if (env.AFRICASTALKING_SENDER_ID) {
-        bodyParams.append('from', env.AFRICASTALKING_SENDER_ID);
-      }
+      const { endpoint, bodyParams } = SmsService.buildRequestPayload({
+        username,
+        to,
+        message,
+        senderId,
+      });
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -138,6 +168,57 @@ export class SmsService {
         success: false,
         error: error.message || 'Network error communicating with SMS provider',
       };
+    }
+  }
+
+  /**
+   * Safe non-invasive connectivity audit for Africa's Talking API.
+   * Calls the official user/balance endpoint to verify that username and API key
+   * authenticate successfully without sending an SMS or incurring cost.
+   */
+  static async checkConnectivity(): Promise<{ success: boolean; message: string; details?: any }> {
+    const apiKey = env.AT_API_KEY || env.AFRICASTALKING_API_KEY;
+    const username = env.AT_USERNAME || env.AFRICASTALKING_USERNAME;
+
+    if (!apiKey || !username || apiKey.includes('your_api_key')) {
+      return { success: false, message: "Africa's Talking API key or username is missing or using placeholder" };
+    }
+
+    try {
+      const isSandbox = username.trim().toLowerCase() === 'sandbox';
+      const endpoint = isSandbox
+        ? 'https://api.sandbox.africastalking.com/version1/user?username=sandbox'
+        : `https://api.africastalking.com/version1/user?username=${encodeURIComponent(username.trim())}`;
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          apiKey,
+          Accept: 'application/json',
+        },
+      });
+
+      const data = (await response.json()) as any;
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: `Africa's Talking authentication failed (${response.status}): ${data?.errorMessage || response.statusText}`,
+          details: data,
+        };
+      }
+
+      return {
+        success: true,
+        message: `Africa's Talking authenticated successfully (Environment: ${isSandbox ? 'Sandbox' : 'Production'})`,
+        details: {
+          isSandbox,
+          username: isSandbox ? 'sandbox' : username,
+          balance: data?.UserData?.balance,
+        },
+      };
+    } catch (err: any) {
+      return { success: false, message: `Africa's Talking connectivity error: ${err.message}` };
     }
   }
 }

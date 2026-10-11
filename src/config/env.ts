@@ -21,6 +21,9 @@ const envSchema = z.object({
   EMAIL_RESEND_COOLDOWN_SECONDS: z.string().transform(Number).default('60'),
 
   // SMS Provider (Africa's Talking)
+  AT_API_KEY: z.string().optional(),
+  AT_USERNAME: z.string().optional(),
+  AT_SENDER_ID: z.string().optional(),
   AFRICASTALKING_API_KEY: z.string().optional(),
   AFRICASTALKING_USERNAME: z.string().optional(),
   AFRICASTALKING_SENDER_ID: z.string().optional(),
@@ -36,24 +39,36 @@ if (!parsed.success) {
   console.warn(parsed.error.flatten().fieldErrors);
 }
 
-export const env = parsed.success
-  ? parsed.data
-  : {
-      NODE_ENV: (process.env.NODE_ENV as any) || 'development',
-      PORT: Number(process.env.PORT) || 3000,
-      DATABASE_URL: process.env.DATABASE_URL || '',
-      DIRECT_URL: process.env.DIRECT_URL || '',
-      JWT_SECRET: process.env.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
-      JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
-      FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
-      RESEND_API_KEY: process.env.RESEND_API_KEY,
-      EMAIL_FROM: process.env.EMAIL_FROM || 'VIBE-CONNECT <onboarding@resend.dev>',
-      EMAIL_VERIFICATION_EXPIRES_MINUTES: Number(process.env.EMAIL_VERIFICATION_EXPIRES_MINUTES) || 30,
-      EMAIL_RESEND_COOLDOWN_SECONDS: Number(process.env.EMAIL_RESEND_COOLDOWN_SECONDS) || 60,
-      AFRICASTALKING_API_KEY: process.env.AFRICASTALKING_API_KEY,
-      AFRICASTALKING_USERNAME: process.env.AFRICASTALKING_USERNAME,
-      AFRICASTALKING_SENDER_ID: process.env.AFRICASTALKING_SENDER_ID,
-      OTP_EXPIRATION_MINUTES: Number(process.env.OTP_EXPIRATION_MINUTES) || 5,
-      OTP_MAX_ATTEMPTS: Number(process.env.OTP_MAX_ATTEMPTS) || 5,
-      OTP_RESEND_COOLDOWN_SECONDS: Number(process.env.OTP_RESEND_COOLDOWN_SECONDS) || 60,
-    };
+const raw = parsed.success ? parsed.data : (process.env as any);
+
+const atApiKey = raw.AT_API_KEY || raw.AFRICASTALKING_API_KEY;
+const atUsername = raw.AT_USERNAME || raw.AFRICASTALKING_USERNAME;
+const atSenderId = raw.AT_SENDER_ID || raw.AFRICASTALKING_SENDER_ID;
+
+export const env = {
+  NODE_ENV: (raw.NODE_ENV as any) || 'development',
+  PORT: Number(raw.PORT) || 3000,
+  DATABASE_URL: raw.DATABASE_URL || '',
+  DIRECT_URL: raw.DIRECT_URL || '',
+  JWT_SECRET: raw.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
+  JWT_EXPIRES_IN: raw.JWT_EXPIRES_IN || '7d',
+  FRONTEND_URL: raw.FRONTEND_URL || 'http://localhost:5173',
+
+  // Email Provider (Resend)
+  RESEND_API_KEY: raw.RESEND_API_KEY,
+  EMAIL_FROM: raw.EMAIL_FROM || 'VIBE-CONNECT <onboarding@resend.dev>',
+  EMAIL_VERIFICATION_EXPIRES_MINUTES: Number(raw.EMAIL_VERIFICATION_EXPIRES_MINUTES) || 30,
+  EMAIL_RESEND_COOLDOWN_SECONDS: Number(raw.EMAIL_RESEND_COOLDOWN_SECONDS) || 60,
+
+  // SMS Provider (Africa's Talking) - Dual naming supported
+  AT_API_KEY: atApiKey,
+  AT_USERNAME: atUsername,
+  AT_SENDER_ID: atSenderId,
+  AFRICASTALKING_API_KEY: atApiKey,
+  AFRICASTALKING_USERNAME: atUsername,
+  AFRICASTALKING_SENDER_ID: atSenderId,
+
+  OTP_EXPIRATION_MINUTES: Number(raw.OTP_EXPIRATION_MINUTES) || 5,
+  OTP_MAX_ATTEMPTS: Number(raw.OTP_MAX_ATTEMPTS) || 5,
+  OTP_RESEND_COOLDOWN_SECONDS: Number(raw.OTP_RESEND_COOLDOWN_SECONDS) || 60,
+};

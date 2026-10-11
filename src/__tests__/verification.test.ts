@@ -9,6 +9,7 @@ import { prisma } from '../shared/utils/prisma';
 import { env } from '../config/env';
 import { hashVerificationCode, generateSecureToken, generateSecureOtp } from '../shared/utils/crypto';
 import { normalizePhoneNumber } from '../shared/utils/phone';
+import { SmsService } from '../shared/services/sms.service';
 
 describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
   let server: http.Server;
@@ -728,5 +729,69 @@ describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
     // Exactly one must succeed (200), and the other must fail (400)
     assert.ok(statuses.includes(200));
     assert.ok(statuses.includes(400));
+  });
+
+  // -------------------------------------------------------------
+  // Test 18: Africa's Talking SMS adapter supports Sandbox mode without sender ID
+  // -------------------------------------------------------------
+  it('18. Africa\'s Talking SMS adapter supports Sandbox mode without a sender ID', () => {
+    // When username is 'sandbox' and senderId is not provided
+    const { endpoint, bodyParams } = SmsService.buildRequestPayload({
+      username: 'sandbox',
+      to: '+254712345678',
+      message: 'Your verification code is: 123456',
+    });
+
+    // Endpoint must target the official Africa's Talking Sandbox gateway
+    assert.equal(endpoint, 'https://api.sandbox.africastalking.com/version1/messaging');
+    assert.equal(bodyParams.get('username'), 'sandbox');
+    assert.equal(bodyParams.get('to'), '+254712345678');
+    assert.equal(bodyParams.get('message'), 'Your verification code is: 123456');
+
+    // 'from' parameter MUST be absent so Africa's Talking defaults to sandbox sender shortcode
+    assert.equal(bodyParams.has('from'), false);
+    assert.equal(bodyParams.get('from'), null);
+  });
+
+  // -------------------------------------------------------------
+  // Test 19: Sandbox mode safely omits unapproved alphanumeric sender IDs
+  // -------------------------------------------------------------
+  it('19. Sandbox mode safely omits alphanumeric sender ID to prevent gateway rejection', () => {
+    // If a developer accidentally configures an alphanumeric sender ID while using sandbox username
+    const { endpoint, bodyParams } = SmsService.buildRequestPayload({
+      username: 'sandbox',
+      to: '+254712345678',
+      message: 'Code: 654321',
+      senderId: 'VIBE-CONNECT', // Alphanumeric sender ID
+    });
+
+    assert.equal(endpoint, 'https://api.sandbox.africastalking.com/version1/messaging');
+    // Alphanumeric 'from' must be omitted in sandbox to avoid carrier/gateway rejection
+    assert.equal(bodyParams.has('from'), false);
+  });
+
+  // -------------------------------------------------------------
+  // Test 20: Production mode uses standard gateway and includes configured sender ID
+  // -------------------------------------------------------------
+  it('20. Production mode uses live gateway and attaches configured sender ID', () => {
+    const { endpoint, bodyParams } = SmsService.buildRequestPayload({
+      username: 'vibe_connect_live',
+      to: '+254712345678',
+      message: 'Code: 999888',
+      senderId: 'VIBE-CONNECT',
+    });
+
+    assert.equal(endpoint, 'https://api.africastalking.com/version1/messaging');
+    assert.equal(bodyParams.get('username'), 'vibe_connect_live');
+    assert.equal(bodyParams.get('from'), 'VIBE-CONNECT');
+
+    // And if senderId is empty string in production, 'from' is omitted
+    const withoutSender = SmsService.buildRequestPayload({
+      username: 'vibe_connect_live',
+      to: '+254712345678',
+      message: 'Code: 999888',
+      senderId: '   ',
+    });
+    assert.equal(withoutSender.bodyParams.has('from'), false);
   });
 });

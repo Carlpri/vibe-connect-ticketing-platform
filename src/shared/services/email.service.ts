@@ -1,3 +1,4 @@
+import { Resend } from 'resend';
 import { env } from '../../config/env';
 import { logger } from '../utils/logger';
 
@@ -107,44 +108,35 @@ export class EmailService {
     }
 
     try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: env.EMAIL_FROM,
-          to: [to],
-          subject: 'Verify your VIBE-CONNECT account',
-          html: this.getVerificationEmailHtml(name, verificationUrl, expiresInMinutes),
-        }),
+      const resend = new Resend(env.RESEND_API_KEY);
+      const { data, error } = await resend.emails.send({
+        from: env.EMAIL_FROM,
+        to: [to],
+        subject: 'Verify your VIBE-CONNECT account',
+        html: this.getVerificationEmailHtml(name, verificationUrl, expiresInMinutes),
       });
 
-      const data = (await response.json()) as any;
-
-      if (!response.ok) {
-        logger.error(`Resend API rejected email to ${to}: ${data?.message || response.statusText}`, null, {
+      if (error) {
+        logger.error(`Resend API rejected email to ${to}: ${error.message}`, null, {
           category: 'EMAIL_DELIVERY_FAILURE',
-          statusCode: response.status,
-          resendError: data,
+          resendError: error,
         });
 
         return {
           success: false,
-          error: data?.message || 'Email delivery failed at provider',
+          error: error.message || 'Email delivery failed at provider',
         };
       }
 
-      logger.info(`Verification email sent successfully to ${to} (ID: ${data.id})`, {
+      logger.info(`Verification email sent successfully to ${to} (ID: ${data?.id})`, {
         category: 'EMAIL_DELIVERED',
         recipient: to,
-        id: data.id,
+        id: data?.id,
       });
 
       return {
         success: true,
-        messageId: data.id,
+        messageId: data?.id,
       };
     } catch (error: any) {
       logger.error(`Network error while calling Resend API for ${to}`, error, {
@@ -155,6 +147,34 @@ export class EmailService {
         success: false,
         error: error.message || 'Network error communicating with email provider',
       };
+    }
+  }
+
+  /**
+   * Safe non-invasive connectivity audit for Resend API.
+   * Checks whether the configured RESEND_API_KEY is valid and accepted by Resend
+   * without sending an email or triggering volume.
+   */
+  static async checkConnectivity(): Promise<{ success: boolean; message: string; details?: any }> {
+    if (!env.RESEND_API_KEY || env.RESEND_API_KEY.includes('your_api_key')) {
+      return { success: false, message: 'RESEND_API_KEY is not configured or using placeholder' };
+    }
+
+    try {
+      const resend = new Resend(env.RESEND_API_KEY);
+      const { data, error } = await resend.apiKeys.list();
+      if (error) {
+        // If the key has sending-only permission, list() returns a restricted/unauthorized error,
+        // which still verifies the key is authentic against Resend.
+        const errMsg = error.message?.toLowerCase() || '';
+        if (errMsg.includes('restricted') || errMsg.includes('permission') || (error as any).name === 'restricted_api_key') {
+          return { success: true, message: 'Resend API key authenticated successfully (restricted sending key)', details: error };
+        }
+        return { success: false, message: `Resend authentication failed: ${error.message}`, details: error };
+      }
+      return { success: true, message: 'Resend API key authenticated and active', details: data };
+    } catch (err: any) {
+      return { success: false, message: `Resend connectivity error: ${err.message}` };
     }
   }
 }
