@@ -94,8 +94,24 @@ model Order {
 
   user User @relation(fields: [userId], references: [id])
 
+    items OrderItem[]
+    
   @@index([userId, createdAt])     
   @@index([eventId, status])       
   @@index([status, expiresAt])     
   @@map("orders")
+}
+
+model OrderItem {
+  id           String @id @default(uuid()) @db.Uuid
+  orderId      String @db.Uuid
+  ticketTypeId String @db.Uuid     // TODO: add @relation to TicketType once Phillip's model is merged
+  quantity     Int
+  unitPriceKes Int                 
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, ticketTypeId])
+  @@index([ticketTypeId])
+  @@map("order_items")
 }
