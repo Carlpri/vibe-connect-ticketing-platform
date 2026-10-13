@@ -55,9 +55,11 @@ model User {
   phoneVerificationAttempts        Int       @default(0)
   phoneVerificationCooldownUntil   DateTime? @db.Timestamptz
 
+  orders Order[]
   @@index([emailVerificationTokenHash])
   @@map("users")
 }
+
 
 // -------------------------------------------------------------
 // Phillip's Domain (To be implemented by Phillip):
@@ -71,3 +73,29 @@ model User {
 // - OrderItem
 // - Ticket (Digital QR ticket & check-in)
 // -------------------------------------------------------------
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @db.Uuid
+  eventId   String      @db.Uuid     // TODO: add @relation to Event once Phillip's model is merged
+  status    OrderStatus @default(PENDING)
+  totalKes  Int                      
+  expiresAt DateTime    @db.Timestamptz   
+  paidAt    DateTime?   @db.Timestamptz   
+  createdAt DateTime    @default(now()) @db.Timestamptz
+  updatedAt DateTime    @updatedAt @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])     
+  @@index([eventId, status])       
+  @@index([status, expiresAt])     
+  @@map("orders")
+}
