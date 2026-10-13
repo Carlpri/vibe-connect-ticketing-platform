@@ -95,6 +95,7 @@ model Order {
   user User @relation(fields: [userId], references: [id])
 
     items OrderItem[]
+    payments Payment[]
     
   @@index([userId, createdAt])     
   @@index([eventId, status])       
@@ -114,4 +115,32 @@ model OrderItem {
   @@unique([orderId, ticketTypeId])
   @@index([ticketTypeId])
   @@map("order_items")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Payment {
+  id                 String        @id @default(uuid()) @db.Uuid
+  orderId            String        @db.Uuid
+  status             PaymentStatus @default(PENDING)
+  amountKes          Int
+  phoneNumber        String
+  merchantRequestId  String?
+  checkoutRequestId  String?       @unique
+  mpesaReceiptNumber String?       @unique
+  resultCode         Int?
+  resultDesc         String?
+  rawCallback        Json?
+  paidAt             DateTime?     @db.Timestamptz
+  createdAt          DateTime      @default(now()) @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @db.Timestamptz
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@map("payments")
 }
