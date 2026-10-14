@@ -121,26 +121,29 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  CANCELLED
 }
 
 model Payment {
   id                 String        @id @default(uuid()) @db.Uuid
   orderId            String        @db.Uuid
   status             PaymentStatus @default(PENDING)
-  amountKes          Int
+  amountKes          Int           
   phoneNumber        String
-  merchantRequestId  String?
+  merchantRequestId  String?       @unique
   checkoutRequestId  String?       @unique
   mpesaReceiptNumber String?       @unique
   resultCode         Int?
   resultDesc         String?
-  rawCallback        Json?
+  // Raw M-Pesa callback payload; retain only for the minimum required period and purge according to privacy policy.
+  rawCallback        Json?         
   paidAt             DateTime?     @db.Timestamptz
   createdAt          DateTime      @default(now()) @db.Timestamptz
   updatedAt          DateTime      @updatedAt @db.Timestamptz
 
-  order Order @relation(fields: [orderId], references: [id])
+  order              Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
+  @@index([status])
   @@map("payments")
 }

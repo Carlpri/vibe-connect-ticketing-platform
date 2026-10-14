@@ -67,6 +67,9 @@ async function main() {
   await expectRejected('amount of 0', () =>
     prisma.payment.create({ data: { orderId: order.id, amountKes: 0, phoneNumber: phone } }));
 
+  await expectRejected('payment amount does not match order total', () =>
+    prisma.payment.create({ data: { orderId: order.id, amountKes: 500, phoneNumber: phone } }));
+
   await expectRejected('phone number in wrong format', () =>
     prisma.payment.create({ data: { orderId: order.id, amountKes: 600, phoneNumber: '0712345678' } }));
 
