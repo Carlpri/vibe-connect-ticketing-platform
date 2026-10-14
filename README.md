@@ -1,102 +1,75 @@
-#  VIBE-CONNECT
+# React + TypeScript + Vite
 
-**Kenyan Event Discovery & Digital Ticketing Platform**
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-> Connecting people to live events across Kenya — from concerts and festivals to community gatherings.
+Currently, two official plugins are available:
 
----
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-##  Tech Stack
+## React Compiler
 
-| Layer        | Technology                                |
-|--------------|-------------------------------------------|
-| Runtime      | Node.js                                   |
-| Framework    | Express                                   |
-| Language     | TypeScript                                |
-| Database     | PostgreSQL (hosted on **Supabase** — free) |
-| ORM          | Prisma                                    |
-| Validation   | Zod                                       |
-| API Style    | REST                                      |
-| Architecture | Modular Monolith                          |
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## 📁 Project Structure
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 
 ```
-src/
-├── modules/
-│   ├── auth/          # Users, authentication, security (Carlos)
-│   │   ├── auth.controller.ts
-│   │   ├── auth.service.ts
-│   │   ├── auth.routes.ts
-│   │   ├── auth.schemas.ts      # Zod validation
-│   │   └── auth.middleware.ts
-│   ├── events/        # Events, ticket inventory (Phillip)
-│   │   ├── events.controller.ts
-│   │   ├── events.service.ts
-│   │   ├── events.routes.ts
-│   │   └── events.schemas.ts
-│   └── orders/        # Orders, payments, QR codes, check-in (Freddy)
-│       ├── orders.controller.ts
-│       ├── orders.service.ts
-│       ├── orders.routes.ts
-│       └── orders.schemas.ts
-├── shared/            # Common middleware, utilities, types
-│   ├── middleware/
-│   ├── utils/
-│   └── types/
-├── config/            # App and environment configuration
-│   └── env.ts
-└── server.ts          # Express application entry point
-prisma/
-└── schema.prisma      # Database schema
+
+You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+
 ```
-
-## 🛠️ Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) v18+
-- npm (comes with Node.js)
-- A [Supabase](https://supabase.com/) account (free tier)
-
-### Setup
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/Carlpri/vibe-connect-ticketing-platform.git
-cd vibe-connect-ticketing-platform
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment variables
-cp .env.example .env
-# Edit .env with your Supabase database credentials
-# (find them in Supabase Dashboard → Project Settings → Database)
-
-# 4. Generate Prisma Client
-npx prisma generate
-
-# 5. Run database migrations
-npx prisma migrate dev
-
-# 6. Start the development server
-npm run dev
-```
-
-## 👥 Team
-
-| Developer | Domain                                     |
-|-----------|---------------------------------------------|
-| **Carlos**  | Backend foundation, auth, users, security |
-| **Phillip** | Events, ticket inventory                  |
-| **Freddy**  | Orders, payments, digital tickets, QR     |
-
-## 🎨 Design Reference
-
-Our frontend prototype is available at:
-[https://vibe-connect-ke.lovable.app/](https://vibe-connect-ke.lovable.app/)
-
-## 📄 License
-
-This project is proprietary. All rights reserved.
