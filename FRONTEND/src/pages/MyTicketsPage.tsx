@@ -8,6 +8,8 @@ import EmptyState from '../components/common/EmptyState';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate } from '../utils/format';
 import { colors } from '../styles/theme';
+import { bookingService } from '../services/bookingService';
+import { MOCK_EVENTS } from '../data/mockEvents';
 
 interface StoredOrder {
   orderId: string;
@@ -27,15 +29,60 @@ export default function MyTicketsPage() {
   const [orders, setOrders] = useState<StoredOrder[]>([]);
 
   useEffect(() => {
-    const raw = localStorage.getItem('vibe_connect_orders');
-    if (raw) {
-      try {
-        setOrders(JSON.parse(raw));
-      } catch {
-        setOrders([]);
+    let isMounted = true;
+
+    async function loadOrders() {
+      const localRaw = localStorage.getItem('vibe_connect_orders');
+      let localOrders: StoredOrder[] = [];
+      if (localRaw) {
+        try {
+          localOrders = JSON.parse(localRaw);
+        } catch {
+          localOrders = [];
+        }
       }
+
+      try {
+        const res = await bookingService.getMyOrders();
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiOrders: StoredOrder[] = res.data.map((o: any) => {
+            const matchedEvent = MOCK_EVENTS.find(
+              (e) => e.id === o.eventId || o.eventId?.includes(e.id)
+            ) || MOCK_EVENTS[0];
+
+            const txId = o.payments?.[0]?.mpesaReceiptNumber || o.payments?.[0]?.checkoutRequestId || `TX-${o.id.slice(0, 8)}`;
+            return {
+              orderId: o.id,
+              transactionId: txId,
+              phone: o.payments?.[0]?.phoneNumber || user?.phone || '254700000000',
+              attendeeName: user?.name || 'Verified Attendee',
+              attendeeEmail: user?.email || '',
+              event: matchedEvent,
+              items: o.items || [],
+              totalKes: o.totalKes,
+              createdAt: o.createdAt,
+              qrCodeData: `VIBE-CONNECT-${o.id}`,
+            };
+          });
+
+          // Merge without duplicate order IDs
+          const seen = new Set(apiOrders.map((o) => o.orderId));
+          const merged = [...apiOrders, ...localOrders.filter((o) => !seen.has(o.orderId))];
+          if (isMounted) setOrders(merged);
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend orders fetch notice (using local storage):', err);
+      }
+
+      if (isMounted) setOrders(localOrders);
     }
-  }, []);
+
+    loadOrders();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const handlePrint = () => {
     window.print();

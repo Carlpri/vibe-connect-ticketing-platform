@@ -156,7 +156,7 @@ export interface Order {
 /** POST /api/orders — request body */
 export interface CreateOrderInput {
   eventId: string;
-  items: Array<{ ticketTypeId: string; quantity: number }>;
+  items: Array<{ ticketTypeId: string; quantity: number; unitPriceKes?: number }>;
 }
 
 /** POST /api/orders/:id/pay — request body */

@@ -25,12 +25,14 @@ import MpesaModal from '../components/events/MpesaModal';
 import { formatKes, formatDate } from '../utils/format';
 import type { Cart } from '../types';
 import { colors } from '../styles/theme';
+import { bookingService } from '../services/bookingService';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [mpesaModalOpen, setMpesaModalOpen] = useState(false);
+  const [backendOrderId, setBackendOrderId] = useState<string | null>(null);
 
   // Attendee info
   const [fullName, setFullName] = useState(user?.name || '');
@@ -80,7 +82,34 @@ export default function CheckoutPage() {
   const serviceFeeKes = subtotalKes > 0 ? 50 : 0; // Flat KES 50 service fee for live booking
   const grandTotalKes = subtotalKes + serviceFeeKes;
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
+    let orderIdToUse = backendOrderId;
+
+    if (!orderIdToUse && user) {
+      try {
+        const selectedItems = cart.items
+          .map((i) => ({
+            ticketTypeId: i.ticketType.id,
+            quantity: quantities[i.ticketType.id] ?? i.quantity,
+            unitPriceKes: i.ticketType.priceKes,
+          }))
+          .filter((i) => i.quantity > 0);
+
+        if (selectedItems.length > 0) {
+          const res = await bookingService.createOrder({
+            eventId: cart.event.id,
+            items: selectedItems,
+          });
+          if (res.data?.id) {
+            orderIdToUse = res.data.id;
+            setBackendOrderId(res.data.id);
+          }
+        }
+      } catch (err: any) {
+        console.warn('Backend order reservation notice:', err?.response?.data || err.message);
+      }
+    }
+
     if (paymentMethod === 'MPESA') {
       setMpesaModalOpen(true);
     } else {
@@ -99,8 +128,9 @@ export default function CheckoutPage() {
     phone: string;
     transactionId: string;
   }) => {
+    const finalOrderId = backendOrderId || ('ORD-' + Math.floor(100000 + Math.random() * 900000));
     const newOrder = {
-      orderId: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+      orderId: finalOrderId,
       transactionId,
       phone: paidPhone,
       attendeeName: fullName || user?.name || 'Guest Attendee',
@@ -112,7 +142,7 @@ export default function CheckoutPage() {
       })).filter((i) => i.quantity > 0),
       totalKes: grandTotalKes,
       createdAt: new Date().toISOString(),
-      qrCodeData: `VIBE-TICKET-${transactionId}-${cart.event.id}`,
+      qrCodeData: `VIBE-CONNECT-${finalOrderId}`,
     };
 
     const existingOrders = JSON.parse(localStorage.getItem('vibe_connect_orders') || '[]');
@@ -601,6 +631,7 @@ export default function CheckoutPage() {
         onClose={() => setMpesaModalOpen(false)}
         amountKes={grandTotalKes}
         initialPhone={phone}
+        orderId={backendOrderId || undefined}
         onPaymentSuccess={handlePaymentSuccess}
       />
     </Box>

@@ -1,67 +1,77 @@
 /**
  * Booking / Orders service
  *
- * ⚠️ BACKEND STATUS: NOT YET IMPLEMENTED
- * The orders module is reserved for Freddy. The POST /api/orders,
- * GET /api/orders/my, GET /api/orders/:id, and POST /api/orders/:id/pay
- * endpoints do not yet exist.
+ * Connected to Freddy's Orders & Payments Backend module.
  *
- * Security note: POST /api/orders will require BOTH emailVerified AND
- * phoneVerified (requireFullyVerified middleware). The UI must guide
- * users through verification before reaching checkout.
+ * Endpoints:
+ * - POST /api/orders (requires authenticate + requireFullyVerified)
+ * - GET  /api/orders/my (requires authenticate)
+ * - GET  /api/orders/:id (requires authenticate)
+ * - POST /api/orders/:id/pay (requires authenticate)
+ * - POST /api/orders/:id/confirm-payment (requires authenticate)
+ * - POST /api/orders/checkin (requires authenticate)
  */
+import apiClient from './api';
 import type { Order, CreateOrderInput, InitiatePaymentInput, ApiSuccessResponse } from '../types';
 
 export const bookingService = {
   /**
    * POST /api/orders
    * Requires: authenticate + requireFullyVerified middleware
-   * NOT IMPLEMENTED — awaiting Freddy's orders module.
    */
-  async createOrder(_input: CreateOrderInput): Promise<ApiSuccessResponse<Order>> {
-    // When implemented:
-    // const { data } = await apiClient.post<ApiSuccessResponse<Order>>('/orders', _input);
-    // return data;
-    throw new Error('Order creation endpoint is not yet implemented by the backend team.');
+  async createOrder(input: CreateOrderInput): Promise<ApiSuccessResponse<Order>> {
+    const { data } = await apiClient.post<ApiSuccessResponse<Order>>('/orders', input);
+    return data;
   },
 
   /**
    * GET /api/orders/my
    * Requires: authenticate middleware
-   * NOT IMPLEMENTED — awaiting Freddy's orders module.
    */
   async getMyOrders(): Promise<ApiSuccessResponse<Order[]>> {
-    // When implemented:
-    // const { data } = await apiClient.get<ApiSuccessResponse<Order[]>>('/orders/my');
-    // return data;
-    throw new Error('Order history endpoint is not yet implemented by the backend team.');
+    const { data } = await apiClient.get<ApiSuccessResponse<Order[]>>('/orders/my');
+    return data;
   },
 
   /**
    * GET /api/orders/:id
    * Requires: authenticate middleware
-   * NOT IMPLEMENTED — awaiting Freddy's orders module.
    */
-  async getOrderById(_id: string): Promise<ApiSuccessResponse<Order>> {
-    // When implemented:
-    // const { data } = await apiClient.get<ApiSuccessResponse<Order>>(`/orders/${_id}`);
-    // return data;
-    throw new Error('Order details endpoint is not yet implemented by the backend team.');
+  async getOrderById(id: string): Promise<ApiSuccessResponse<Order>> {
+    const { data } = await apiClient.get<ApiSuccessResponse<Order>>(`/orders/${id}`);
+    return data;
   },
 
   /**
    * POST /api/orders/:id/pay
    * Requires: authenticate middleware
-   * NOT IMPLEMENTED — awaiting Freddy's orders module.
-   * Will initiate M-Pesa STK push to customer's phone.
+   * Initiates M-Pesa STK push to customer's phone.
    */
   async initiatePayment(
-    _orderId: string,
-    _input: InitiatePaymentInput
-  ): Promise<ApiSuccessResponse<{ checkoutRequestId: string }>> {
-    // When implemented:
-    // const { data } = await apiClient.post(`/orders/${_orderId}/pay`, _input);
-    // return data;
-    throw new Error('Payment initiation endpoint is not yet implemented by the backend team.');
+    orderId: string,
+    input: InitiatePaymentInput
+  ): Promise<ApiSuccessResponse<{ checkoutRequestId: string; paymentId: string; amountKes: number }>> {
+    const { data } = await apiClient.post(`/orders/${orderId}/pay`, input);
+    return data;
+  },
+
+  /**
+   * POST /api/orders/:id/confirm-payment
+   * Confirms payment and issues digital ticket
+   */
+  async confirmPayment(orderId: string, mpesaReceiptNumber?: string): Promise<ApiSuccessResponse<Order>> {
+    const { data } = await apiClient.post<ApiSuccessResponse<Order>>(`/orders/${orderId}/confirm-payment`, {
+      mpesaReceiptNumber,
+    });
+    return data;
+  },
+
+  /**
+   * POST /api/orders/checkin
+   * Scans / validates QR ticket code
+   */
+  async checkinTicket(qrCode: string): Promise<ApiSuccessResponse<any>> {
+    const { data } = await apiClient.post<ApiSuccessResponse<any>>('/orders/checkin', { qrCode });
+    return data;
   },
 };

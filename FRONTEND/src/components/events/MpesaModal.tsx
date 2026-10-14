@@ -14,12 +14,14 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import { formatKes } from '../../utils/format';
 import { colors } from '../../styles/theme';
+import { bookingService } from '../../services/bookingService';
 
 interface MpesaModalProps {
   open: boolean;
   onClose: () => void;
   amountKes: number;
   initialPhone?: string;
+  orderId?: string;
   onPaymentSuccess: (details: { phone: string; transactionId: string }) => void;
 }
 
@@ -28,6 +30,7 @@ export default function MpesaModal({
   onClose,
   amountKes,
   initialPhone = '',
+  orderId,
   onPaymentSuccess,
 }: MpesaModalProps) {
   const [phone, setPhone] = useState(initialPhone);
@@ -50,14 +53,31 @@ export default function MpesaModal({
     return () => clearTimeout(timer);
   }, [step, countdown]);
 
-  const handleStartStkPush = () => {
+  const handleStartStkPush = async () => {
     if (!phone || phone.length < 9) return;
     setStep('PENDING');
     setCountdown(6);
+
+    if (orderId) {
+      try {
+        await bookingService.initiatePayment(orderId, { phoneNumber: phone });
+      } catch (err) {
+        console.warn('Backend STK push initiation note:', err);
+      }
+    }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     const fakeTxId = 'QA' + Math.random().toString(36).substring(2, 8).toUpperCase() + '9X';
+
+    if (orderId) {
+      try {
+        await bookingService.confirmPayment(orderId, fakeTxId);
+      } catch (err) {
+        console.warn('Backend confirm payment note:', err);
+      }
+    }
+
     onPaymentSuccess({ phone, transactionId: fakeTxId });
     onClose();
     setStep('INPUT');
