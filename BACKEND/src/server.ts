@@ -16,8 +16,10 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: '*', // Allow frontend client / Lovable prototype reference
-    credentials: true,
+    origin: '*',                                          // Allow all origins
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false,                                   // Must be false when origin is '*'
   })
 );
 app.use(express.json());

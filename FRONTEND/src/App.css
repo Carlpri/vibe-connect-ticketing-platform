@@ -1,0 +1,64 @@
+/* ── App-level utility styles ─── SHIKA design system ──── */
+
+/* Category pill container - horizontal scroll */
+.category-pills {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.category-pills::-webkit-scrollbar {
+  display: none;
+}
+
+/* Section label chip */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(200, 242, 48, 0.08);
+  border: 1px solid rgba(200, 242, 48, 0.2);
+  color: #C8F230;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* Gradient text helper */
+.gradient-text {
+  background: linear-gradient(180deg, #F5F2ED 30%, #9E9590 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Ink section (dark panel within page) */
+.ink-section {
+  background-color: #0C0B09;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Event card hover glow ────────────────────── */
+.event-card-glow {
+  position: relative;
+}
+.event-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(200, 242, 48, 0.2), rgba(232, 80, 58, 0.2));
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: -1;
+}
+.event-card-glow:hover::before {
+  opacity: 1;
+}

@@ -37,7 +37,7 @@ async function main() {
   });
   console.log(order.items.length === 2 ? 'PASS: order created with 2 lines' : 'FAIL: line count');
 
-  const sum = order.items.reduce((total, i) => total + i.quantity * i.unitPriceKes, 0);
+  const sum = order.items.reduce((total: number, i: any) => total + i.quantity * i.unitPriceKes, 0);
   console.log(sum === order.totalKes ? 'PASS: lines add up to order total' : 'FAIL: total mismatch');
 
   await expectRejected('quantity of 0', () =>

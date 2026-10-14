@@ -1,15 +1,27 @@
 # Dependencies
 node_modules/
+BACKEND/node_modules/
+FRONTEND/node_modules/
 
-# Build output
+# Build outputs
 dist/
+BACKEND/dist/
+FRONTEND/dist/
+dist-ssr/
+FRONTEND/dist-ssr/
 
 # Environment variables (NEVER commit these)
 .env
 .env.local
 .env.*.local
+BACKEND/.env
+BACKEND/.env.local
+FRONTEND/.env
+FRONTEND/.env.local
 
 # Prisma
+BACKEND/prisma/*.db
+BACKEND/prisma/*.db-journal
 prisma/*.db
 prisma/*.db-journal
 
@@ -17,6 +29,9 @@ prisma/*.db-journal
 logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # OS files
 .DS_Store
@@ -29,6 +44,10 @@ desktop.ini
 *.swp
 *.swo
 *~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
 # Coverage & testing
 coverage/
@@ -40,3 +59,5 @@ temp/
 # Postman
 .postman/
 postman/
+BACKEND/.postman/
+BACKEND/postman/

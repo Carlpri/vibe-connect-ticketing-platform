@@ -1,102 +1,125 @@
-#  VIBE-CONNECT
+# 🎟️ VIBE-CONNECT
 
 **Kenyan Event Discovery & Digital Ticketing Platform**
 
-> Connecting people to live events across Kenya — from concerts and festivals to community gatherings.
+> Connecting people to live events across Kenya — from concerts and festivals to community gatherings, powered by M-Pesa payments and secure digital ticketing.
 
 ---
 
-##  Tech Stack
+## 🏗️ Architecture & Structure
 
-| Layer        | Technology                                |
-|--------------|-------------------------------------------|
-| Runtime      | Node.js                                   |
-| Framework    | Express                                   |
-| Language     | TypeScript                                |
-| Database     | PostgreSQL (hosted on **Supabase** — free) |
-| ORM          | Prisma                                    |
-| Validation   | Zod                                       |
-| API Style    | REST                                      |
-| Architecture | Modular Monolith                          |
-
-## 📁 Project Structure
+The repository is organized as a clean monorepo with **`VIBE-CONNECT`** as the root folder, containing two independent subroots:
 
 ```
-src/
-├── modules/
-│   ├── auth/          # Users, authentication, security (Carlos)
-│   │   ├── auth.controller.ts
-│   │   ├── auth.service.ts
-│   │   ├── auth.routes.ts
-│   │   ├── auth.schemas.ts      # Zod validation
-│   │   └── auth.middleware.ts
-│   ├── events/        # Events, ticket inventory (Phillip)
-│   │   ├── events.controller.ts
-│   │   ├── events.service.ts
-│   │   ├── events.routes.ts
-│   │   └── events.schemas.ts
-│   └── orders/        # Orders, payments, QR codes, check-in (Freddy)
-│       ├── orders.controller.ts
-│       ├── orders.service.ts
-│       ├── orders.routes.ts
-│       └── orders.schemas.ts
-├── shared/            # Common middleware, utilities, types
-│   ├── middleware/
-│   ├── utils/
-│   └── types/
-├── config/            # App and environment configuration
-│   └── env.ts
-└── server.ts          # Express application entry point
-prisma/
-└── schema.prisma      # Database schema
+VIBE-CONNECT/
+├── BACKEND/                  # Express + TypeScript + Prisma API
+│   ├── src/                  # Modular monolith backend source
+│   │   ├── modules/
+│   │   │   ├── auth/         # Authentication & users (Carlos)
+│   │   │   ├── events/       # Events & ticket inventory (Phillip)
+│   │   │   └── orders/       # Orders, M-Pesa & tickets (Freddy)
+│   │   ├── shared/           # Common utilities, middleware & types
+│   │   ├── config/           # Environment configuration
+│   │   └── server.ts         # Express server entry point
+│   ├── prisma/               # Prisma schema and migrations
+│   ├── package.json          # Backend dependencies & scripts
+│   ├── tsconfig.json         # TypeScript configuration
+│   └── .env                  # Backend environment variables
+│
+├── FRONTEND/                 # React 19 + TypeScript + Vite + MUI Dark Theme
+│   ├── src/
+│   │   ├── components/       # Reusable UI (Navbar, Footer, EventCard, etc.)
+│   │   ├── pages/            # Feature pages (Home, Events, Details, Checkout, etc.)
+│   │   ├── contexts/         # React Contexts (AuthContext)
+│   │   ├── services/         # API clients (api, auth, event, booking)
+│   │   ├── types/            # TypeScript interfaces matching backend models
+│   │   └── data/             # Mock event fallback data for resilience
+│   ├── package.json          # Frontend dependencies & scripts
+│   ├── vite.config.ts        # Vite build tool configuration
+│   └── .env                  # Frontend environment variables
+│
+├── package.json              # Root monorepo scripts & orchestrator
+└── README.md                 # Project documentation
 ```
 
-## 🛠️ Getting Started
+---
 
-### Prerequisites
+## ⚡ Tech Stack
 
-- [Node.js](https://nodejs.org/) v18+
-- npm (comes with Node.js)
-- A [Supabase](https://supabase.com/) account (free tier)
+| Layer | Technology |
+|---|---|
+| **Frontend Framework** | React 19, TypeScript, Vite |
+| **Frontend UI/UX** | Material UI (MUI v9) Dark Theme with Glassmorphism |
+| **Backend Runtime** | Node.js (>= 18), Express 5, TypeScript |
+| **Database & ORM** | PostgreSQL (hosted on Supabase) with Prisma ORM |
+| **Authentication** | JWT, bcryptjs |
+| **Validation** | Zod schemas |
+| **Payments** | M-Pesa STK Push / Lipa Na M-Pesa Simulation & Integration |
 
-### Setup
+---
+
+## 🚀 Quick Start
+
+### 1. Install Dependencies
+You can install dependencies for both apps directly from the root:
+```bash
+npm run install:all
+```
+Or individually:
+```bash
+npm run install:backend
+npm run install:frontend
+```
+
+### 2. Environment Setup
+
+- **Backend**: Configure `BACKEND/.env` with your `DATABASE_URL`, `JWT_SECRET`, and `PORT=3000`.
+- **Frontend**: Configure `FRONTEND/.env` with `VITE_API_URL=http://localhost:3000/api/v1`.
+
+### 3. Run Applications in Development
+
+Run both or either from the root folder:
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/Carlpri/vibe-connect-ticketing-platform.git
-cd vibe-connect-ticketing-platform
+# Run Backend API (http://localhost:3000)
+npm run dev:backend
 
-# 2. Install dependencies
-npm install
+# Run Frontend Web App (http://localhost:5173)
+npm run dev:frontend
+```
 
-# 3. Configure environment variables
-cp .env.example .env
-# Edit .env with your Supabase database credentials
-# (find them in Supabase Dashboard → Project Settings → Database)
-
-# 4. Generate Prisma Client
-npx prisma generate
-
-# 5. Run database migrations
-npx prisma migrate dev
-
-# 6. Start the development server
+Alternatively, `cd` into either subfolder:
+```bash
+cd BACKEND
+npm run dev
+```
+```bash
+cd FRONTEND
 npm run dev
 ```
 
-## 👥 Team
+### 4. Build Applications for Production
 
-| Developer | Domain                                     |
-|-----------|---------------------------------------------|
-| **Carlos**  | Backend foundation, auth, users, security |
-| **Phillip** | Events, ticket inventory                  |
-| **Freddy**  | Orders, payments, digital tickets, QR     |
+From root:
+```bash
+# Build both BACKEND and FRONTEND
+npm run build
 
-## 🎨 Design Reference
+# Or build individually
+npm run build:backend
+npm run build:frontend
+```
 
-Our frontend prototype is available at:
-[https://vibe-connect-ke.lovable.app/](https://vibe-connect-ke.lovable.app/)
+---
 
-## 📄 License
+## 🧪 Testing Backend
+```bash
+npm run test:backend
+```
 
-This project is proprietary. All rights reserved.
+## 🗄️ Database Operations
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:studio
+```
