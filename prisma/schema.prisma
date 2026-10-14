@@ -31,35 +31,35 @@ enum UserRole {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
   passwordHash String
   name         String
-  phone        String?   @unique
-  role         UserRole  @default(ATTENDEE)
-  createdAt    DateTime  @default(now()) @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @db.Timestamptz
+  phone        String?  @unique
+  role         UserRole @default(ATTENDEE)
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
 
   // Verification Status Flags
   emailVerified Boolean @default(false)
   phoneVerified Boolean @default(false)
 
   // Email Verification Fields (tokens stored as SHA-256 hashes only)
-  emailVerificationTokenHash       String?
-  emailVerificationExpiresAt       DateTime? @db.Timestamptz
-  emailVerificationCooldownUntil   DateTime? @db.Timestamptz
+  emailVerificationTokenHash     String?
+  emailVerificationExpiresAt     DateTime? @db.Timestamptz
+  emailVerificationCooldownUntil DateTime? @db.Timestamptz
 
   // Phone OTP Verification Fields (OTPs stored as SHA-256 hashes only)
-  phoneVerificationOtpHash         String?
-  phoneVerificationExpiresAt       DateTime? @db.Timestamptz
-  phoneVerificationAttempts        Int       @default(0)
-  phoneVerificationCooldownUntil   DateTime? @db.Timestamptz
+  phoneVerificationOtpHash       String?
+  phoneVerificationExpiresAt     DateTime? @db.Timestamptz
+  phoneVerificationAttempts      Int       @default(0)
+  phoneVerificationCooldownUntil DateTime? @db.Timestamptz
 
   orders Order[]
+
   @@index([emailVerificationTokenHash])
   @@map("users")
 }
-
 
 // -------------------------------------------------------------
 // Phillip's Domain (To be implemented by Phillip):
@@ -84,31 +84,33 @@ enum OrderStatus {
 model Order {
   id        String      @id @default(uuid()) @db.Uuid
   userId    String      @db.Uuid
-  eventId   String      @db.Uuid     // TODO: add @relation to Event once Phillip's model is merged
+  eventId   String      @db.Uuid // TODO: add @relation to Event once Phillip's model is merged
   status    OrderStatus @default(PENDING)
-  totalKes  Int                      
-  expiresAt DateTime    @db.Timestamptz   
-  paidAt    DateTime?   @db.Timestamptz   
+  totalKes  Int
+  expiresAt DateTime    @db.Timestamptz
+  paidAt    DateTime?   @db.Timestamptz
   createdAt DateTime    @default(now()) @db.Timestamptz
   updatedAt DateTime    @updatedAt @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id])
 
-    items OrderItem[]
-    payments Payment[]
-    
-  @@index([userId, createdAt])     
-  @@index([eventId, status])       
-  @@index([status, expiresAt])     
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([userId, createdAt])
+  @@index([eventId, status])
+  @@index([status, expiresAt])
   @@map("orders")
 }
 
 model OrderItem {
-  id           String @id @default(uuid()) @db.Uuid
-  orderId      String @db.Uuid
-  ticketTypeId String @db.Uuid     // TODO: add @relation to TicketType once Phillip's model is merged
+  id           String   @id @default(uuid()) @db.Uuid
+  orderId      String   @db.Uuid
+  ticketTypeId String   @db.Uuid // TODO: add @relation to TicketType once Phillip's model is merged
   quantity     Int
-  unitPriceKes Int                 
+  unitPriceKes Int
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
