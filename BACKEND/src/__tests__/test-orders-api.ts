@@ -1,12 +1,25 @@
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import app from '../server';
 import { prisma } from '../shared/utils/prisma';
 import { env } from '../config/env';
 
-const BASE_URL = `http://localhost:${env.PORT || 3000}`;
+const PORT = env.PORT || 3000;
+const BASE_URL = `http://localhost:${PORT}`;
 
 async function runTests() {
   console.log('--- Testing Orders & Payments API Endpoints via fetch ---');
+
+  let server: any = null;
+  await new Promise<void>((resolve) => {
+    server = app.listen(PORT, () => {
+      resolve();
+    }).on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve();
+      }
+    });
+  });
 
   // 1. Setup a test verified user
   const testEmail = `test.attendee.${Date.now()}@example.com`;
@@ -139,7 +152,11 @@ async function runTests() {
     await prisma.order.deleteMany({ where: { userId: user.id } });
     await prisma.user.delete({ where: { id: user.id } });
     await prisma.$disconnect();
+    if (server && server.close) {
+      server.close();
+    }
     console.log('Test data cleaned up successfully');
+    process.exit(0);
   }
 }
 

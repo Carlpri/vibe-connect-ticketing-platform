@@ -22,6 +22,8 @@ import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
+import CreateEventPage from './pages/CreateEventPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -52,6 +54,22 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organizer"
+                  element={
+                    <ProtectedRoute requiredRoles={['ORGANIZER', 'ADMIN']}>
+                      <OrganizerDashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/create-event"
+                  element={
+                    <ProtectedRoute requiredRoles={['ORGANIZER', 'ADMIN']}>
+                      <CreateEventPage />
                     </ProtectedRoute>
                   }
                 />

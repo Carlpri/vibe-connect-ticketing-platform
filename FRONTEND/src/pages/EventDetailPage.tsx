@@ -18,6 +18,9 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShareIcon from '@mui/icons-material/Share';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
+import DirectionsIcon from '@mui/icons-material/Directions';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import LinkIcon from '@mui/icons-material/Link';
 import TicketSelector from '../components/events/TicketSelector';
 import EmptyState from '../components/common/EmptyState';
 import { eventService } from '../services/eventService';
@@ -426,6 +429,191 @@ export default function EventDetailPage() {
                 </Box>
               </Box>
             )}
+
+            {/* ── Event Location & Directions ── */}
+            {(() => {
+              const isOnline = event.format === 'ONLINE';
+              const isHybrid = event.format === 'HYBRID';
+              const isPhysical = !event.format || event.format === 'PHYSICAL';
+
+              const hasCoords =
+                typeof event.latitude === 'number' &&
+                typeof event.longitude === 'number' &&
+                isFinite(event.latitude) &&
+                isFinite(event.longitude);
+
+              // Build an address string from available parts
+              const addressParts = [
+                event.venue,
+                event.address,
+                event.city,
+                event.county,
+                'Kenya',
+              ].filter(Boolean);
+              const hasAddress = addressParts.length > 1; // more than just "Kenya"
+
+              // Construct Google Maps directions URL
+              const buildDirectionsUrl = (): string | null => {
+                const base = 'https://www.google.com/maps/dir/?api=1&destination=';
+                if (hasCoords) {
+                  return `${base}${event.latitude},${event.longitude}`;
+                }
+                if (hasAddress) {
+                  return `${base}${encodeURIComponent(addressParts.join(', '))}`;
+                }
+                return null;
+              };
+
+              const directionsUrl = (isPhysical || isHybrid) ? buildDirectionsUrl() : null;
+
+              return (
+                <Box sx={{ mb: 4 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontFamily: '"Archivo Black", sans-serif',
+                      fontSize: '1.25rem',
+                      textTransform: 'uppercase',
+                      color: colors.fg,
+                      mb: 1.5,
+                    }}
+                  >
+                    EVENT LOCATION
+                  </Typography>
+
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      borderRadius: '8px',
+                      bgcolor: '#FEFDFB',
+                      border: `1px solid ${colors.border}`,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Physical / Hybrid venue details */}
+                    {(isPhysical || isHybrid) && (event.venue || hasAddress) && (
+                      <Box sx={{ p: 2.5 }}>
+                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                          <LocationOnIcon sx={{ color: colors.coral, fontSize: 28, mt: 0.2 }} />
+                          <Box sx={{ flex: 1 }}>
+                            {event.venue && (
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 800, color: colors.fg, mb: 0.25 }}
+                              >
+                                {event.venue}
+                              </Typography>
+                            )}
+                            {event.address && (
+                              <Typography variant="body2" sx={{ color: colors.fg, mb: 0.25 }}>
+                                {event.address}
+                              </Typography>
+                            )}
+                            <Typography variant="body2" sx={{ color: colors.mutedFg }}>
+                              {[event.city, event.county, 'Kenya'].filter(Boolean).join(', ')}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {directionsUrl && (
+                          <Button
+                            component="a"
+                            href={directionsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            startIcon={<DirectionsIcon />}
+                            endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                            sx={{
+                              mt: 2,
+                              bgcolor: colors.coral,
+                              color: '#fff',
+                              fontWeight: 800,
+                              textTransform: 'uppercase',
+                              px: 3,
+                              py: 1.1,
+                              borderRadius: '8px',
+                              fontSize: '0.85rem',
+                              letterSpacing: '0.03em',
+                              '&:hover': {
+                                bgcolor: colors.coralLt,
+                                transform: 'translateY(-1px)',
+                              },
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            Get Directions
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+
+                    {/* Online event link */}
+                    {(isOnline || isHybrid) && (
+                      <Box
+                        sx={{
+                          p: 2.5,
+                          borderTop:
+                            isHybrid && (event.venue || hasAddress)
+                              ? `1px solid ${colors.border}`
+                              : 'none',
+                          display: 'flex',
+                          gap: 1.5,
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <LinkIcon sx={{ color: colors.lime, fontSize: 28, mt: 0.2 }} />
+                        <Box sx={{ flex: 1 }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: 800, color: colors.fg, mb: 0.25 }}
+                          >
+                            {isHybrid ? 'Also Available Online' : 'Online Event'}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: colors.mutedFg, mb: 1 }}>
+                            {event.onlineUrl
+                              ? 'Join from anywhere — a link will be shared upon purchase.'
+                              : 'Online access details will be shared closer to the event date.'}
+                          </Typography>
+                          {event.onlineUrl && (
+                            <Button
+                              component="a"
+                              href={event.onlineUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              variant="outlined"
+                              size="small"
+                              sx={{
+                                borderColor: colors.lime,
+                                color: colors.limeFg,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.8rem',
+                                '&:hover': {
+                                  bgcolor: 'rgba(181, 224, 42, 0.08)',
+                                  borderColor: colors.limeLt,
+                                },
+                              }}
+                            >
+                              Open Link
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Fallback: no location data at all */}
+                    {isPhysical && !event.venue && !hasAddress && !hasCoords && (
+                      <Box sx={{ p: 2.5, textAlign: 'center' }}>
+                        <LocationOnIcon sx={{ color: colors.mutedFg, fontSize: 32, mb: 1 }} />
+                        <Typography variant="body2" sx={{ color: colors.mutedFg }}>
+                          Venue details will be announced soon — check back later.
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+                </Box>
+              );
+            })()}
 
             {/* Event Guidance Notice */}
             <Box

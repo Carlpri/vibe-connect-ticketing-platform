@@ -6,7 +6,7 @@
  * the rich mock Kenyan events catalog so the frontend remains fully interactive.
  */
 import apiClient from './api';
-import type { Event, EventsQuery, ApiSuccessResponse } from '../types';
+import type { Event, EventsQuery, ApiSuccessResponse, CreateEventInput, UpdateEventInput } from '../types';
 import { MOCK_EVENTS } from '../data/mockEvents';
 
 export const eventService = {
@@ -76,5 +76,29 @@ export const eventService = {
     }
 
     throw new Error('Event not found');
+  },
+
+  /**
+   * POST /api/events (Organizer / Admin only)
+   */
+  async createEvent(input: CreateEventInput): Promise<ApiSuccessResponse<Event>> {
+    const res = await apiClient.post<ApiSuccessResponse<Event>>('/events', input);
+    return res.data;
+  },
+
+  /**
+   * PATCH /api/events/:id (Organizer / Admin only)
+   */
+  async updateEvent(id: string, input: UpdateEventInput): Promise<ApiSuccessResponse<Event>> {
+    const res = await apiClient.patch<ApiSuccessResponse<Event>>(`/events/${id}`, input);
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/events/:id (Organizer / Admin only)
+   */
+  async deleteEvent(id: string): Promise<ApiSuccessResponse<void>> {
+    const res = await apiClient.delete<ApiSuccessResponse<void>>(`/events/${id}`);
+    return res.data;
   },
 };

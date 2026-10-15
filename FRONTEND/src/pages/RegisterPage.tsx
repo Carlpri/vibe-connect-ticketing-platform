@@ -63,7 +63,11 @@ export default function RegisterPage() {
         role,
       });
       toast.success('Account created! Please check your email to verify.');
-      navigate(from, { replace: true });
+      if (role === 'ORGANIZER') {
+        navigate('/organizer', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {

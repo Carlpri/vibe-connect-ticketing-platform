@@ -72,10 +72,10 @@ export interface VerifyPhoneInput {
 }
 
 // ----------------------------------------------------------
-// Events (Phillip's domain — NOT YET IMPLEMENTED in backend)
-// Types represent the INTENDED shape. Not verified endpoints.
+// Events (mirrors backend EventsService response shapes)
 // ----------------------------------------------------------
 
+export type EventFormat = 'PHYSICAL' | 'ONLINE' | 'HYBRID';
 export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED';
 export type EventCategory =
   | 'Music'
@@ -105,8 +105,14 @@ export interface Event {
   description: string;
   coverImage?: string;
   category: EventCategory | string;
+  format?: EventFormat;
   venue: string;
   city: string;
+  county?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  onlineUrl?: string;
   startsAt: string;
   endsAt?: string;
   status: EventStatus;
@@ -116,7 +122,7 @@ export interface Event {
   createdAt: string;
 }
 
-/** Query params for GET /api/events (not yet implemented) */
+/** Query params for GET /api/events */
 export interface EventsQuery {
   search?: string;
   category?: string;
@@ -124,6 +130,38 @@ export interface EventsQuery {
   page?: number;
   limit?: number;
 }
+
+export interface CreateTicketTypeInput {
+  name: string;
+  description?: string;
+  priceKes: number;
+  capacity: number;
+  salesStart?: string;
+  salesEnd?: string;
+  isActive?: boolean;
+}
+
+export interface CreateEventInput {
+  title: string;
+  slug?: string;
+  description: string;
+  category: string;
+  coverImage?: string;
+  format: EventFormat;
+  status?: EventStatus;
+  startsAt: string;
+  endsAt: string;
+  venue?: string;
+  city?: string;
+  county?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  onlineUrl?: string;
+  ticketTypes: CreateTicketTypeInput[];
+}
+
+export interface UpdateEventInput extends Partial<CreateEventInput> {}
 
 // ----------------------------------------------------------
 // Orders (Freddy's domain — NOT YET IMPLEMENTED in backend)

@@ -45,9 +45,15 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login({ email, password });
-      toast.success('Welcome back!');
-      navigate(from, { replace: true });
+      const loggedInUser = await login({ email, password });
+      toast.success(`Welcome back, ${loggedInUser.name}!`);
+      
+      if (loggedInUser.role === 'ORGANIZER' || loggedInUser.role === 'ADMIN') {
+        const target = from && from !== '/' ? from : '/organizer';
+        navigate(target, { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {

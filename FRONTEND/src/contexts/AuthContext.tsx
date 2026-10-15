@@ -7,8 +7,8 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (input: LoginInput) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  login: (input: LoginInput) => Promise<User>;
+  register: (input: RegisterInput) => Promise<User>;
   setCredentials: (token: string, user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (input: LoginInput) => {
       const res = await authService.login(input);
       setCredentials(res.data.token, res.data.user);
+      return res.data.user;
     },
     [setCredentials]
   );
@@ -59,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (input: RegisterInput) => {
       const res = await authService.register(input);
       setCredentials(res.data.token, res.data.user);
+      return res.data.user;
     },
     [setCredentials]
   );

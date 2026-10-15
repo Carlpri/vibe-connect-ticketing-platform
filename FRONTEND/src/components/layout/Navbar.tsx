@@ -26,18 +26,23 @@ import { getInitials } from '../../utils/format';
 import { colors } from '../../styles/theme';
 import BrandLogo from '../common/BrandLogo';
 
-const NAV_LINKS = [
-  { label: 'Discover', to: '/events' },
-  { label: 'My Tickets', to: '/my-tickets' },
-  { label: 'For Organizers', to: '/login' },
-];
-
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const scrolled = useScrollTrigger({ disableHysteresis: true, threshold: 10 });
+
+  const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
+
+  const navLinks = [
+    { label: 'Discover', to: '/events' },
+    { label: 'My Tickets', to: '/my-tickets' },
+    {
+      label: isOrganizer ? 'Organizer Dashboard' : 'For Organizers',
+      to: isOrganizer ? '/organizer' : '/login',
+    },
+  ];
 
   const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
@@ -73,7 +78,7 @@ export default function Navbar() {
 
           {/* Centered Desktop nav links */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, mx: 'auto' }}>
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <Button
                 key={link.to}
                 component={NavLink}
@@ -101,7 +106,34 @@ export default function Navbar() {
           </Box>
 
           {/* Right-side controls */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: { xs: 'auto', md: 0 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, ml: { xs: 'auto', md: 0 } }}>
+            {/* If organizer, show + Create Event button */}
+            {isOrganizer && (
+              <Button
+                component={Link}
+                to="/create-event"
+                variant="contained"
+                size="small"
+                sx={{
+                  bgcolor: colors.lime,
+                  color: colors.limeFg,
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  textTransform: 'uppercase',
+                  px: 2,
+                  py: 0.7,
+                  borderRadius: '8px',
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  boxShadow: '0 2px 8px rgba(181, 224, 42, 0.3)',
+                  '&:hover': {
+                    bgcolor: colors.limeLt,
+                  },
+                }}
+              >
+                + Create Event
+              </Button>
+            )}
+
             {/* Search Icon */}
             <IconButton
               component={Link}
@@ -157,10 +189,21 @@ export default function Navbar() {
                       {user.name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" noWrap>
-                      {user.email}
+                      {user.email} • {user.role}
                     </Typography>
                   </Box>
                   <Divider />
+                  {isOrganizer && (
+                    <>
+                      <MenuItem onClick={() => { handleMenuClose(); navigate('/organizer'); }} sx={{ fontWeight: 700 }}>
+                        Organizer Dashboard
+                      </MenuItem>
+                      <MenuItem onClick={() => { handleMenuClose(); navigate('/create-event'); }} sx={{ fontWeight: 700 }}>
+                        + Create New Event
+                      </MenuItem>
+                      <Divider />
+                    </>
+                  )}
                   <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>
                     My Profile
                   </MenuItem>
@@ -237,7 +280,7 @@ export default function Navbar() {
         </Box>
         <Divider sx={{ my: 1 }} />
         <List>
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <ListItem key={link.to} disablePadding>
               <ListItemButton
                 component={Link}

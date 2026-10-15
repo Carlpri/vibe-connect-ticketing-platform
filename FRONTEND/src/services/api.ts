@@ -9,8 +9,11 @@ import axios from 'axios';
  * Auth token is injected via a request interceptor so callers never
  * have to manually attach the Authorization header.
  */
+const rawApiUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').trim().replace(/\/+$/, '');
+const normalizedBaseURL = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`;
+
 const apiClient = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/api`,
+  baseURL: normalizedBaseURL,
   headers: {
     'Content-Type': 'application/json',
   },
