@@ -15,6 +15,8 @@ export class AppError extends Error {
 
     // Restore correct prototype chain
     Object.setPrototypeOf(this, new.target.prototype);
-    Error.captureStackTrace(this, this.constructor);
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 }
