@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: vibe-connect-api
+    runtime: node
+    rootDir: BACKEND
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.js
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+    autoDeploy: true
