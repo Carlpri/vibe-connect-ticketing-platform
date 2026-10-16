@@ -128,15 +128,33 @@ async function runTests() {
         : `FAIL: POST /api/orders/:id/confirm-payment (${confirmRes.status}): ${JSON.stringify(confirmBody)}`
     );
 
-    // 7. Test POST /api/orders/checkin (QR validation)
+    // 7. Test GET /api/tickets/my returns signed VC1 payloads
+    const ticketsRes = await fetch(`${BASE_URL}/api/tickets/my`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const ticketsBody = (await ticketsRes.json()) as any;
+    const qrPayload = ticketsBody.data?.tickets?.[0]?.qrPayload as string | undefined;
+    console.log(
+      ticketsRes.status === 200 && typeof qrPayload === 'string' && qrPayload.startsWith('VC1:')
+        ? 'PASS: GET /api/tickets/my returns signed VC1 ticket QR payloads'
+        : `FAIL: GET /api/tickets/my (${ticketsRes.status}): ${JSON.stringify(ticketsBody)}`
+    );
+
+    // 8. Test POST /api/orders/checkin (QR validation) — requires organizer token + real ticket QR
+    const organizerToken = jwt.sign(
+      { userId: user.id, email: user.email, role: 'ORGANIZER' },
+      env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
     const checkinRes = await fetch(`${BASE_URL}/api/orders/checkin`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${organizerToken}`,
       },
       body: JSON.stringify({
-        qrCode: `VIBE-CONNECT-${orderId}`,
+        qrCode: qrPayload || 'VC1:invalid',
       }),
     });
     const checkinBody = (await checkinRes.json()) as any;
@@ -147,6 +165,7 @@ async function runTests() {
     );
   } finally {
     // Cleanup
+    await prisma.ticket.deleteMany({ where: { userId: user.id } });
     await prisma.payment.deleteMany({ where: { order: { userId: user.id } } });
     await prisma.orderItem.deleteMany({ where: { order: { userId: user.id } } });
     await prisma.order.deleteMany({ where: { userId: user.id } });

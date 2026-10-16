@@ -13,6 +13,8 @@ import {
   CircularProgress,
   Divider,
   Alert,
+  TextField,
+  Paper,
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -29,7 +31,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { eventService } from '../services/eventService';
 import type { Event } from '../types';
 import { colors } from '../styles/theme';
+import { eventCoverUrl } from '../utils/eventMedia';
 import { formatEventDate, formatKes } from '../utils/format';
+import { ticketService } from '../services/ticketService';
 
 export default function OrganizerDashboardPage() {
   const { user } = useAuth();
@@ -37,6 +41,9 @@ export default function OrganizerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [scanInput, setScanInput] = useState('');
+  const [scanResult, setScanResult] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   const fetchOrganizerEvents = async () => {
     setLoading(true);
@@ -63,6 +70,32 @@ export default function OrganizerDashboardPage() {
   useEffect(() => {
     fetchOrganizerEvents();
   }, [user]);
+
+  const handleGateScan = async () => {
+    const code = scanInput.trim();
+    if (!code) return;
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const res = await ticketService.scanTicket(code);
+      const data = res.data as any;
+      const attendee = data?.attendee?.name || 'Attendee';
+      const eventTitle = data?.event?.title || 'Event';
+      setScanResult(
+        data?.alreadyCheckedIn
+          ? `Already admitted: ${attendee} (${eventTitle})`
+          : `Admitted: ${attendee} — ${data?.ticketType?.name || 'Ticket'} for ${eventTitle}`
+      );
+      toast.success(data?.message || 'Ticket validated');
+      setScanInput('');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Invalid or unknown ticket QR';
+      setScanResult(msg);
+      toast.error(msg);
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleDelete = async (eventId: string, title: string) => {
     if (!window.confirm(`Are you sure you want to cancel or remove "${title}"?`)) {
@@ -318,6 +351,46 @@ export default function OrganizerDashboardPage() {
           </Card>
         </Box>
 
+        <Paper
+          sx={{
+            p: 2.5,
+            mb: 4,
+            borderRadius: '12px',
+            border: `1px solid ${colors.border}`,
+            bgcolor: colors.cardBg,
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, textTransform: 'uppercase', mb: 0.5, color: colors.fg }}>
+            Gate scanner
+          </Typography>
+          <Typography variant="body2" sx={{ color: colors.mutedFg, mb: 2 }}>
+            Paste or scan a guest&apos;s VC1 ticket QR (e.g. VIBE-CONNECT 001 GOSPEL MIX). Each code is unique and single-use at entry.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="VC1:uuid:signature"
+              value={scanInput}
+              onChange={(e) => setScanInput(e.target.value)}
+              sx={{ flex: 1, minWidth: 240, bgcolor: '#FEFDFB', borderRadius: '8px' }}
+            />
+            <Button
+              variant="contained"
+              disabled={scanning || !scanInput.trim()}
+              onClick={handleGateScan}
+              sx={{ bgcolor: colors.lime, color: colors.limeFg, fontWeight: 800, px: 3 }}
+            >
+              {scanning ? 'Validating…' : 'Validate ticket'}
+            </Button>
+          </Box>
+          {scanResult && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              {scanResult}
+            </Alert>
+          )}
+        </Paper>
+
         {/* Section: Your Events */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography
@@ -420,10 +493,7 @@ export default function OrganizerDashboardPage() {
                       objectFit: 'cover',
                       bgcolor: colors.ink,
                     }}
-                    image={
-                      event.coverImage ||
-                      'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=600&q=80'
-                    }
+                    image={eventCoverUrl(event.coverImage)}
                     alt={event.title}
                   />
 

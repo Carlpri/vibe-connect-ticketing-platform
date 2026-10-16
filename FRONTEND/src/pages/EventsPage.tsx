@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Container,
@@ -9,15 +9,16 @@ import {
   Tabs,
   Tab,
   IconButton,
-  CircularProgress,
+  Alert,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import GridViewIcon from '@mui/icons-material/GridView';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import EventCard from '../components/events/EventCard';
 import EventFilters from '../components/events/EventFilters';
-import { eventService } from '../services/eventService';
-import type { Event } from '../types';
+import PageMeta from '../components/common/PageMeta';
+import { EventGridSkeleton } from '../components/common/LoadingSkeleton';
+import { useEventsList } from '../hooks/useEventsList';
 import { colors } from '../styles/theme';
 
 export default function EventsPage() {
@@ -37,8 +38,17 @@ export default function EventsPage() {
   const [timeTab, setTimeTab] = useState<'All' | 'Today' | 'This Weekend' | 'This Month'>('All');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const listQuery = useMemo(
+    () => ({
+      search: search || undefined,
+      category: category !== 'All Categories' ? category : undefined,
+      city: location !== 'All Locations' ? location : undefined,
+    }),
+    [search, category, location]
+  );
+
+  const { events, loading, error } = useEventsList(listQuery);
+  const awaitingFirstLoad = loading && events.length === 0;
 
   // Sync to URL
   useEffect(() => {
@@ -50,26 +60,6 @@ export default function EventsPage() {
     if (price !== 'Any Price') params.price = price;
     setSearchParams(params, { replace: true });
   }, [search, category, location, date, price, setSearchParams]);
-
-  useEffect(() => {
-    async function loadEvents() {
-      setLoading(true);
-      try {
-        const res = await eventService.getEvents({
-          search: search || undefined,
-          category: category !== 'All Categories' ? category : undefined,
-          city: location !== 'All Locations' ? location : undefined,
-        });
-        setEvents(res.data || []);
-      } catch (err) {
-        console.error('Failed to load events', err);
-        setEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadEvents();
-  }, [search, category, location]);
 
   const handleClear = () => {
     setSearch('');
@@ -116,7 +106,13 @@ export default function EventsPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: { xs: 4, md: 6 }, pb: 12 }}>
+      <PageMeta title="Explore Events" path="/events" />
       <Container maxWidth="lg">
+        {error && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
         {/* Discovery Header matching SHIKA: Label, Large Heading, Search field beside */}
         <Box
           sx={{
@@ -244,7 +240,9 @@ export default function EventsPage() {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: { xs: '100%', sm: 'auto' }, justifyContent: 'space-between' }}>
             <Typography variant="body2" sx={{ fontWeight: 600, color: colors.mutedFg }}>
-              {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} found
+              {awaitingFirstLoad
+                ? 'Loading events…'
+                : `${filteredEvents.length} ${filteredEvents.length === 1 ? 'event' : 'events'} found`}
             </Typography>
 
             {/* Grid / List controls */}
@@ -282,10 +280,8 @@ export default function EventsPage() {
         </Box>
 
         {/* Results grid or empty state */}
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 12 }}>
-            <CircularProgress sx={{ color: colors.lime }} />
-          </Box>
+        {awaitingFirstLoad ? (
+          <EventGridSkeleton count={8} />
         ) : filteredEvents.length === 0 ? (
           <Box
             sx={{

@@ -25,6 +25,8 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 import CreateEventPage from './pages/CreateEventPage';
 import NotFoundPage from './pages/NotFoundPage';
+import LegalDocumentPage from './pages/legal/LegalDocumentPage';
+import AnalyticsProvider from './components/AnalyticsProvider';
 
 export default function App() {
   return (
@@ -32,6 +34,7 @@ export default function App() {
       <CssBaseline />
       <AuthProvider>
         <BrowserRouter>
+          <AnalyticsProvider>
           <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
             <Navbar />
             <Box component="main" sx={{ flexGrow: 1 }}>
@@ -76,12 +79,16 @@ export default function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/privacy" element={<LegalDocumentPage />} />
+                <Route path="/terms" element={<LegalDocumentPage />} />
+                <Route path="/organizer-agreement" element={<LegalDocumentPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Box>
             <Footer />
             <MobileBottomNav />
           </Box>
+          </AnalyticsProvider>
           <Toaster
             position="bottom-right"
             toastOptions={{

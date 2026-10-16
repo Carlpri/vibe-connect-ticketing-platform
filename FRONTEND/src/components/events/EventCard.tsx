@@ -5,6 +5,7 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { Link } from 'react-router-dom';
 import type { Event } from '../../types';
+import { eventCoverUrl } from '../../utils/eventMedia';
 import { formatKes, formatDate } from '../../utils/format';
 import { colors } from '../../styles/theme';
 
@@ -58,7 +59,7 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
           <Box
             component="img"
             className="card-img"
-            src={event.coverImage || 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=800&q=80'}
+            src={eventCoverUrl(event.coverImage)}
             alt={event.title}
             sx={{
               width: '100%',
@@ -161,7 +162,7 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
         <Box
           component="img"
           className="card-img"
-          src={event.coverImage || 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=800&q=80'}
+          src={eventCoverUrl(event.coverImage)}
           alt={event.title}
           loading="lazy"
           sx={{

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, requireFullyVerified } from '../auth/auth.middleware';
+import { authenticate, requireFullyVerified, requireRole } from '../auth/auth.middleware';
 import { validateBody, validateParams } from '../../shared/middleware/validate';
 import { OrdersController } from './orders.controller';
 import {
@@ -71,6 +71,7 @@ router.post(
 router.post(
   '/checkin',
   authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
   validateBody(checkinTicketSchema),
   OrdersController.checkinTicket
 );

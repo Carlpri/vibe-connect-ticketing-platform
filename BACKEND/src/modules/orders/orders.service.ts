@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { prisma } from '../../shared/utils/prisma';
 import { AppError } from '../../shared/errors/AppError';
 import { CreateOrderInput } from './orders.schemas';
+import { TicketsService } from '../tickets/tickets.service';
 
 export class OrdersService {
   /**
@@ -162,6 +163,7 @@ export class OrdersService {
     }
 
     if (order.status === 'PAID') {
+      await TicketsService.issueTicketsForPaidOrder(orderId);
       return order;
     }
 
@@ -211,42 +213,15 @@ export class OrdersService {
       },
     });
 
+    await TicketsService.issueTicketsForPaidOrder(orderId);
+
     return updatedOrder;
   }
 
   /**
    * Validate QR Ticket check-in (for organizers / gate staff).
    */
-  static async checkinTicket(qrCode: string) {
-    // Extract UUID from QR string if wrapped
-    const uuidMatch = qrCode.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    const orderId = uuidMatch ? uuidMatch[0] : qrCode;
-
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
-        items: true,
-        payments: { where: { status: 'SUCCESS' } },
-      },
-    });
-
-    if (!order) {
-      throw new AppError('Invalid ticket: Order not found', 404);
-    }
-
-    if (order.status !== 'PAID') {
-      throw new AppError(`Cannot check in ticket: Order status is ${order.status}`, 400);
-    }
-
-    return {
-      valid: true,
-      orderId: order.id,
-      attendee: order.user,
-      totalKes: order.totalKes,
-      paidAt: order.paidAt,
-      items: order.items,
-      message: 'Ticket validated successfully! Attendee admitted.',
-    };
+  static async checkinTicket(qrCode: string, scannedByUserId: string) {
+    return TicketsService.verifyAndCheckIn(qrCode, scannedByUserId);
   }
 }

@@ -227,13 +227,13 @@ export default function Footer() {
             © {new Date().getFullYear()} VIBE-CONNECT. All rights reserved. Made in Nairobi, Kenya.
           </Typography>
           <Box sx={{ display: 'flex', gap: 3 }}>
-            <MuiLink href="#" sx={{ color: 'rgba(250, 247, 242, 0.45)', fontSize: '0.75rem', textDecoration: 'none', '&:hover': { color: colors.lime } }}>
+            <MuiLink component={Link} to="/privacy" sx={{ color: 'rgba(250, 247, 242, 0.45)', fontSize: '0.75rem', textDecoration: 'none', '&:hover': { color: colors.lime } }}>
               Privacy Policy
             </MuiLink>
-            <MuiLink href="#" sx={{ color: 'rgba(250, 247, 242, 0.45)', fontSize: '0.75rem', textDecoration: 'none', '&:hover': { color: colors.lime } }}>
+            <MuiLink component={Link} to="/terms" sx={{ color: 'rgba(250, 247, 242, 0.45)', fontSize: '0.75rem', textDecoration: 'none', '&:hover': { color: colors.lime } }}>
               Terms of Service
             </MuiLink>
-            <MuiLink href="#" sx={{ color: 'rgba(250, 247, 242, 0.45)', fontSize: '0.75rem', textDecoration: 'none', '&:hover': { color: colors.lime } }}>
+            <MuiLink component={Link} to="/organizer-agreement" sx={{ color: 'rgba(250, 247, 242, 0.45)', fontSize: '0.75rem', textDecoration: 'none', '&:hover': { color: colors.lime } }}>
               Organizer Agreement
             </MuiLink>
           </Box>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Container,
@@ -6,14 +6,15 @@ import {
   Button,
   InputBase,
   Paper,
-  CircularProgress,
+  Alert,
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import EventCard from '../components/events/EventCard';
-import { eventService } from '../services/eventService';
-import type { Event } from '../types';
+import PageMeta from '../components/common/PageMeta';
+import { EventGridSkeleton } from '../components/common/LoadingSkeleton';
+import { useEventsList } from '../hooks/useEventsList';
 import { colors } from '../styles/theme';
 
 const CATEGORIES = [
@@ -29,23 +30,9 @@ const CATEGORIES = [
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { events, loading, error } = useEventsList();
   const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        const res = await eventService.getEvents();
-        setEvents(res.data || []);
-      } catch (err) {
-        console.error('Failed to load events', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchEvents();
-  }, []);
+  const showEventSkeleton = loading && events.length === 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +50,12 @@ export default function HomePage() {
 
   return (
     <Box sx={{ width: '100%', bgcolor: colors.bg, minHeight: '100vh' }}>
+      <PageMeta path="/" />
+      {error && (
+        <Container maxWidth="lg" sx={{ pt: 2 }}>
+          <Alert severity="warning">{error}</Alert>
+        </Container>
+      )}
       {/* ── Section 1: Hero — Full-width event photograph with dark bottom overlay ── */}
       <Box
         sx={{
@@ -305,10 +298,8 @@ export default function HomePage() {
             </Button>
           </Box>
 
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress sx={{ color: colors.lime }} />
-            </Box>
+          {showEventSkeleton ? (
+            <EventGridSkeleton count={4} />
           ) : (
             <Box
               sx={{
@@ -383,10 +374,8 @@ export default function HomePage() {
             </Button>
           </Box>
 
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress sx={{ color: colors.lime }} />
-            </Box>
+          {showEventSkeleton ? (
+            <EventGridSkeleton count={4} />
           ) : (
             <Box
               sx={{
@@ -465,10 +454,8 @@ export default function HomePage() {
             </Button>
           </Box>
 
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress sx={{ color: colors.lime }} />
-            </Box>
+          {showEventSkeleton ? (
+            <EventGridSkeleton count={4} />
           ) : (
             <Box
               sx={{

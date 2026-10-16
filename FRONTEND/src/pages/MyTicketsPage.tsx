@@ -1,97 +1,79 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Box, Paper, Button, Divider } from '@mui/material';
-import QrCode2Icon from '@mui/icons-material/QrCode2';
+import { Link } from 'react-router-dom';
+import {
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Button,
+  Divider,
+  Alert,
+  CircularProgress,
+} from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PrintIcon from '@mui/icons-material/Print';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import EmptyState from '../components/common/EmptyState';
+import TicketQrBlock from '../components/tickets/TicketQrBlock';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate } from '../utils/format';
 import { colors } from '../styles/theme';
-import { bookingService } from '../services/bookingService';
-import { MOCK_EVENTS } from '../data/mockEvents';
-
-interface StoredOrder {
-  orderId: string;
-  transactionId: string;
-  phone: string;
-  attendeeName?: string;
-  attendeeEmail?: string;
-  event: any;
-  items: any[];
-  totalKes: number;
-  createdAt: string;
-  qrCodeData: string;
-}
+import { ticketService, type DigitalTicketPass } from '../services/ticketService';
+import { eventCoverUrl } from '../utils/eventMedia';
 
 export default function MyTicketsPage() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<StoredOrder[]>([]);
+  const [tickets, setTickets] = useState<DigitalTicketPass[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadOrders() {
-      const localRaw = localStorage.getItem('vibe_connect_orders');
-      let localOrders: StoredOrder[] = [];
-      if (localRaw) {
-        try {
-          localOrders = JSON.parse(localRaw);
-        } catch {
-          localOrders = [];
-        }
-      }
-
+    async function loadTickets() {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await bookingService.getMyOrders();
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiOrders: StoredOrder[] = res.data.map((o: any) => {
-            const matchedEvent = MOCK_EVENTS.find(
-              (e) => e.id === o.eventId || o.eventId?.includes(e.id)
-            ) || MOCK_EVENTS[0];
-
-            const txId = o.payments?.[0]?.mpesaReceiptNumber || o.payments?.[0]?.checkoutRequestId || `TX-${o.id.slice(0, 8)}`;
-            return {
-              orderId: o.id,
-              transactionId: txId,
-              phone: o.payments?.[0]?.phoneNumber || user?.phone || '254700000000',
-              attendeeName: user?.name || 'Verified Attendee',
-              attendeeEmail: user?.email || '',
-              event: matchedEvent,
-              items: o.items || [],
-              totalKes: o.totalKes,
-              createdAt: o.createdAt,
-              qrCodeData: `VIBE-CONNECT-${o.id}`,
-            };
-          });
-
-          // Merge without duplicate order IDs
-          const seen = new Set(apiOrders.map((o) => o.orderId));
-          const merged = [...apiOrders, ...localOrders.filter((o) => !seen.has(o.orderId))];
-          if (isMounted) setOrders(merged);
-          return;
+        const res = await ticketService.getMyTickets();
+        if (!isMounted) return;
+        const payload = res.data;
+        setTickets(payload?.tickets ?? []);
+        setVerificationRequired(Boolean(payload?.verificationRequired));
+        setEmailVerified(Boolean(payload?.emailVerified));
+        setPhoneVerified(Boolean(payload?.phoneVerified));
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err?.response?.data?.message || 'Could not load your tickets. Try signing in again.');
+          setTickets([]);
         }
-      } catch (err) {
-        console.warn('Backend orders fetch notice (using local storage):', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      if (isMounted) setOrders(localOrders);
     }
 
-    loadOrders();
+    loadTickets();
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user?.id]);
 
   const handlePrint = () => {
     window.print();
   };
 
+  const statusLabel = (ticket: DigitalTicketPass) => {
+    if (ticket.status === 'CHECKED_IN') return 'ADMITTED';
+    if (ticket.status === 'VOID') return 'VOID';
+    return 'VALID';
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: { xs: 4, md: 6 }, pb: 14 }}>
       <Container maxWidth="lg">
-        {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
           <Box>
             <Typography
@@ -114,7 +96,7 @@ export default function MyTicketsPage() {
             </Typography>
           </Box>
 
-          {orders.length > 0 && (
+          {tickets.length > 0 && !verificationRequired && (
             <Button
               variant="outlined"
               startIcon={<PrintIcon sx={{ fontSize: 18 }} />}
@@ -135,10 +117,47 @@ export default function MyTicketsPage() {
           )}
         </Box>
 
-        {orders.length === 0 ? (
+        {verificationRequired && (
+          <Alert
+            severity="info"
+            icon={<VerifiedUserIcon fontSize="inherit" />}
+            sx={{ mb: 3, borderRadius: '8px' }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+              Verify your email and phone to reveal QR codes and download tickets
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              Each pass gets a unique signed QR code after verification. Gate scanners only accept authentic VC1 tickets.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {!emailVerified && (
+                <Button component={Link} to="/verify-email" size="small" variant="contained" sx={{ bgcolor: colors.lime, color: colors.limeFg }}>
+                  Verify email
+                </Button>
+              )}
+              {!phoneVerified && (
+                <Button component={Link} to="/profile" size="small" variant="outlined">
+                  Verify phone (Profile)
+                </Button>
+              )}
+            </Box>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+            <CircularProgress sx={{ color: colors.lime }} />
+          </Box>
+        ) : tickets.length === 0 ? (
           <EmptyState
             title="NO TICKETS YET"
-            description="You haven't booked any event passes yet. Browse upcoming live concerts, festivals, and campus experiences in Kenya."
+            description="After you complete M-Pesa checkout for an event like VIBE-CONNECT 001 GOSPEL MIX, your unique passes appear here."
             actionLabel="Discover Events"
             onAction={() => window.location.assign('/events')}
           />
@@ -150,9 +169,9 @@ export default function MyTicketsPage() {
               gap: 3.5,
             }}
           >
-            {orders.map((order) => (
+            {tickets.map((ticket) => (
               <Paper
-                key={order.orderId}
+                key={ticket.id}
                 elevation={0}
                 sx={{
                   bgcolor: '#FEFDFB',
@@ -164,8 +183,16 @@ export default function MyTicketsPage() {
                   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
                 }}
               >
-                {/* Event header strip */}
-                <Box sx={{ p: 2.5, bgcolor: colors.bg, borderBottom: `1px dashed ${colors.border}` }}>
+                <Box
+                  sx={{
+                    height: 88,
+                    backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75)), url(${eventCoverUrl(ticket.event.coverImage)})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    p: 2.5,
+                    color: '#fff',
+                  }}
+                >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Box
                       sx={{
@@ -179,39 +206,39 @@ export default function MyTicketsPage() {
                         letterSpacing: '0.04em',
                       }}
                     >
-                      VERIFIED PASS
+                      {statusLabel(ticket)}
                     </Box>
-                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: colors.mutedFg, fontWeight: 700 }}>
-                      {order.orderId}
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 700, opacity: 0.85 }}>
+                      #{ticket.serialNumber}
                     </Typography>
                   </Box>
-
                   <Typography
                     sx={{
                       fontFamily: '"Archivo Black", sans-serif',
-                      fontWeight: 400,
-                      fontSize: '1.2rem',
+                      fontSize: '1.05rem',
                       textTransform: 'uppercase',
-                      color: colors.fg,
-                      mb: 1,
+                      lineHeight: 1.2,
                     }}
                   >
-                    {order.event.title}
+                    {ticket.event.title}
                   </Typography>
+                </Box>
 
+                <Box sx={{ p: 2.5, bgcolor: colors.bg, borderBottom: `1px dashed ${colors.border}` }}>
                   <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', color: colors.mutedFg, fontSize: '0.82rem' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
                       <CalendarMonthIcon sx={{ fontSize: 16, color: colors.coral }} />
-                      <span>{formatDate(order.event.startsAt)}</span>
+                      <span>{formatDate(ticket.event.startsAt)}</span>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
                       <LocationOnIcon sx={{ fontSize: 16, color: colors.coral }} />
-                      <span>{order.event.venue}, {order.event.city}</span>
+                      <span>
+                        {ticket.event.venue}, {ticket.event.city}
+                      </span>
                     </Box>
                   </Box>
                 </Box>
 
-                {/* Ticket Details & High-Contrast QR Code */}
                 <Box
                   sx={{
                     p: 3,
@@ -224,64 +251,51 @@ export default function MyTicketsPage() {
                 >
                   <Box sx={{ flexGrow: 1 }}>
                     <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg, display: 'block', mb: 0.5 }}>
-                      TICKET TIER(S)
+                      TICKET TIER
                     </Typography>
-                    {order.items.map((item, idx) => (
-                      <Typography key={idx} variant="subtitle2" sx={{ fontWeight: 800, color: colors.fg }}>
-                        {item.quantity} × {item.ticketType.name}
-                      </Typography>
-                    ))}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: colors.fg }}>
+                      {ticket.ticketType.name}
+                    </Typography>
 
                     <Divider sx={{ my: 1.5, borderColor: colors.border }} />
 
-                    <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       <Box>
                         <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg, display: 'block' }}>
                           ATTENDEE
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 700, color: colors.fg }}>
-                          {order.attendeeName || user?.name || 'Attendee'}
+                          {ticket.holderName}
                         </Typography>
                       </Box>
-                      <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg, display: 'block' }}>
-                          M-PESA REF
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: colors.success }}>
-                          {order.transactionId}
-                        </Typography>
-                      </Box>
+                      {ticket.paymentRef && (
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg, display: 'block' }}>
+                            M-PESA REF
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: colors.success }}>
+                            {ticket.paymentRef}
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
-                  </Box>
-
-                  {/* Pure High-contrast QR Pass */}
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: '8px',
-                      bgcolor: '#0E1013',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 0.8,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        bgcolor: colors.qrBg,
-                        p: 1,
-                        borderRadius: '4px',
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}
-                    >
-                      <QrCode2Icon sx={{ fontSize: 96, color: '#000000' }} />
-                    </Box>
-                    <Typography variant="caption" sx={{ fontSize: '0.62rem', fontFamily: 'monospace', color: colors.lime, fontWeight: 700 }}>
-                      GATE SCAN READY
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1.5, fontFamily: 'monospace', color: colors.mutedFg }}>
+                      Ticket ID: {ticket.id.slice(0, 8)}…
                     </Typography>
                   </Box>
+
+                  <TicketQrBlock
+                    qrPayload={ticket.qrPayload}
+                    ticketLabel={`${ticket.event.title}-${ticket.serialNumber}`}
+                    locked={verificationRequired || !ticket.qrPayload}
+                    lockedMessage={
+                      verificationRequired
+                        ? 'Verify email & phone to unlock'
+                        : ticket.status === 'VOID'
+                          ? 'Ticket voided'
+                          : undefined
+                    }
+                  />
                 </Box>
               </Paper>
             ))}

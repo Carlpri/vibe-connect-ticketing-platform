@@ -3,7 +3,7 @@ import { Container, Paper, Box, Typography, Button, Divider } from '@mui/materia
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import ExploreIcon from '@mui/icons-material/Explore';
-import QrCode2Icon from '@mui/icons-material/QrCode2';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import { formatKes, formatDate } from '../utils/format';
 import { colors } from '../styles/theme';
 
@@ -66,40 +66,30 @@ export default function OrderConfirmationPage() {
             YOU'RE GOING!
           </Typography>
           <Typography variant="body2" sx={{ color: colors.mutedFg, mb: 3.5 }}>
-            Your digital pass has been issued and stored securely. Show your QR code at the gate.
+            Your unique digital passes are ready in My Tickets. Each seat gets its own signed VC1 QR code for gate scanning.
           </Typography>
 
-          {/* High-Contrast QR Code Box */}
           <Box
             sx={{
               p: 2.5,
               borderRadius: '8px',
-              bgcolor: '#0E1013',
-              color: '#FAF7F2',
+              bgcolor: colors.bg,
+              border: `1px solid ${colors.border}`,
               display: 'inline-flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 1.5,
+              gap: 1,
               mb: 3.5,
               width: '100%',
-              maxWidth: 320,
+              maxWidth: 360,
             }}
           >
-            <Box
-              sx={{
-                bgcolor: colors.qrBg,
-                color: colors.qrFg,
-                p: 2,
-                borderRadius: '6px',
-                display: 'grid',
-                placeItems: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              }}
-            >
-              <QrCode2Icon sx={{ fontSize: 140, color: '#000' }} />
-            </Box>
-            <Typography variant="caption" sx={{ fontFamily: 'monospace', letterSpacing: '0.08em', color: colors.lime, fontWeight: 700 }}>
-              {order.qrCodeData || order.transactionId}
+            <VerifiedUserIcon sx={{ fontSize: 36, color: colors.coral }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.fg }}>
+              Verify to unlock & download
+            </Typography>
+            <Typography variant="body2" sx={{ color: colors.mutedFg, textAlign: 'center' }}>
+              Confirm your email and phone number, then open My Tickets to view, print, or download each pass QR as PNG.
             </Typography>
           </Box>
 

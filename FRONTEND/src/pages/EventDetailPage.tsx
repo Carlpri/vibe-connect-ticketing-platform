@@ -28,6 +28,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatDate, formatKes } from '../utils/format';
 import type { Event } from '../types';
 import { colors } from '../styles/theme';
+import PageMeta from '../components/common/PageMeta';
+import { eventCoverUrl } from '../utils/eventMedia';
+import { AnalyticsEvents } from '../utils/analytics';
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +49,9 @@ export default function EventDetailPage() {
       try {
         const res = await eventService.getEventById(id);
         setEvent(res.data);
+        if (res.data) {
+          AnalyticsEvents.viewEvent(res.data.id, res.data.title);
+        }
       } catch (err: any) {
         setError(err.message || 'Event not found');
       } finally {
@@ -72,6 +78,12 @@ export default function EventDetailPage() {
       }));
 
     if (selectedItems.length === 0) return;
+
+    const checkoutTotal = selectedItems.reduce(
+      (sum, item) => sum + item.ticketType.priceKes * item.quantity,
+      0
+    );
+    AnalyticsEvents.beginCheckout(event.id, checkoutTotal);
 
     sessionStorage.setItem(
       'vibe_connect_cart',
@@ -115,8 +127,18 @@ export default function EventDetailPage() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const metaDescription =
+    event.description?.slice(0, 155) ||
+    `${event.title} at ${event.venue}, ${event.city}. Get tickets on VIBE-CONNECT with M-Pesa.`;
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, pb: { xs: 16, md: 10 } }}>
+      <PageMeta
+        title={event.title}
+        description={metaDescription}
+        path={`/events/${event.id}`}
+        image={eventCoverUrl(event.coverImage)}
+      />
       {/* Breadcrumb Bar */}
       <Container maxWidth="lg" sx={{ pt: 2.5, pb: 1.5 }}>
         <Breadcrumbs sx={{ color: colors.mutedFg, fontSize: '0.85rem' }}>
@@ -154,7 +176,7 @@ export default function EventDetailPage() {
         >
           <Box
             component="img"
-            src={event.coverImage || 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1600&q=85'}
+            src={eventCoverUrl(event.coverImage)}
             alt={event.title}
             sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />

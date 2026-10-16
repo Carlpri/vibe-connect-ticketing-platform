@@ -83,7 +83,7 @@ export class OrdersController {
    */
   static async checkinTicket(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await OrdersService.checkinTicket(req.body.qrCode);
+      const result = await OrdersService.checkinTicket(req.body.qrCode, req.user!.userId);
       sendSuccess(res, result, result.message, 200);
     } catch (error) {
       next(error);

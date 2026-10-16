@@ -9,6 +9,7 @@ import { sendSuccess, sendError } from './shared/utils/apiResponse';
 import authRoutes from './modules/auth/auth.routes';
 import eventsRoutes from './modules/events/events.routes';
 import ordersRoutes from './modules/orders/orders.routes';
+import ticketsRoutes from './modules/tickets/tickets.routes';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.get('/', (_req, res) => {
       auth: '/api/auth',
       events: '/api/events',
       orders: '/api/orders',
+      tickets: '/api/tickets',
     },
   });
 });
@@ -50,6 +52,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/tickets', ticketsRoutes);
 
 // 404 Route Handler
 app.use((req, res) => {

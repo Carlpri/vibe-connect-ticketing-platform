@@ -71,7 +71,7 @@ export const bookingService = {
    * Scans / validates QR ticket code
    */
   async checkinTicket(qrCode: string): Promise<ApiSuccessResponse<any>> {
-    const { data } = await apiClient.post<ApiSuccessResponse<any>>('/orders/checkin', { qrCode });
+    const { data } = await apiClient.post<ApiSuccessResponse<any>>('/tickets/scan', { qrCode });
     return data;
   },
 };

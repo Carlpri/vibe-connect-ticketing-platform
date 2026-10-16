@@ -10,6 +10,7 @@ const envSchema = z.object({
   DIRECT_URL: z.string().optional(),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   JWT_EXPIRES_IN: z.string().default('7d'),
+  TICKET_QR_SECRET: z.string().optional(),
 
   // Application & Frontend URLs
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
@@ -52,6 +53,7 @@ export const env = {
   DIRECT_URL: raw.DIRECT_URL || '',
   JWT_SECRET: raw.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
   JWT_EXPIRES_IN: raw.JWT_EXPIRES_IN || '7d',
+  TICKET_QR_SECRET: raw.TICKET_QR_SECRET || raw.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
   FRONTEND_URL: raw.FRONTEND_URL || 'http://localhost:5173',
 
   // Email Provider (Resend)

@@ -26,6 +26,8 @@ import { formatKes, formatDate } from '../utils/format';
 import type { Cart } from '../types';
 import { colors } from '../styles/theme';
 import { bookingService } from '../services/bookingService';
+import PageMeta from '../components/common/PageMeta';
+import { AnalyticsEvents } from '../utils/analytics';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -121,13 +123,21 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePaymentSuccess = ({
+  const handlePaymentSuccess = async ({
     phone: paidPhone,
     transactionId,
   }: {
     phone: string;
     transactionId: string;
   }) => {
+    if (backendOrderId) {
+      try {
+        await bookingService.confirmPayment(backendOrderId, transactionId);
+      } catch (err) {
+        console.warn('Payment confirm note:', err);
+      }
+    }
+
     const finalOrderId = backendOrderId || ('ORD-' + Math.floor(100000 + Math.random() * 900000));
     const newOrder = {
       orderId: finalOrderId,
@@ -150,11 +160,13 @@ export default function CheckoutPage() {
     localStorage.setItem('vibe_connect_orders', JSON.stringify(existingOrders));
 
     sessionStorage.removeItem('vibe_connect_cart');
+    AnalyticsEvents.purchase(cart.event.id, finalOrderId, grandTotalKes);
     navigate('/order-confirmation', { state: { order: newOrder } });
   };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 5, pb: 14 }}>
+      <PageMeta title="Checkout" path="/checkout" noIndex />
       <Container maxWidth="lg">
         <Button
           component={Link}

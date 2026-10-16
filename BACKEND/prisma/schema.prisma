@@ -65,8 +65,9 @@ model User {
   phoneVerificationAttempts      Int       @default(0)
   phoneVerificationCooldownUntil DateTime? @db.Timestamptz
 
-  orders Order[]
-  events Event[]
+  orders  Order[]
+  events  Event[]
+  tickets Ticket[]
 
   @@index([emailVerificationTokenHash])
   @@map("users")
@@ -120,6 +121,7 @@ model Event {
 
   organizer   User        @relation(fields: [organizerId], references: [id])
   ticketTypes TicketType[]
+  tickets     Ticket[]
 
   @@index([status, startsAt])
   @@index([category, status])
@@ -142,6 +144,7 @@ model TicketType {
   updatedAt   DateTime  @updatedAt @db.Timestamptz
 
   event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
 
   @@index([eventId, isActive])
   @@map("ticket_types")
@@ -176,6 +179,7 @@ model Order {
 
   items    OrderItem[]
   payments Payment[]
+  tickets  Ticket[]
 
   @@index([userId, createdAt])
   @@index([eventId, status])
@@ -192,11 +196,45 @@ model OrderItem {
   createdAt    DateTime @default(now()) @db.Timestamptz
   updatedAt    DateTime @updatedAt @db.Timestamptz
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
 
   @@unique([orderId, ticketTypeId])
   @@index([ticketTypeId])
   @@map("order_items")
+}
+
+enum TicketStatus {
+  ISSUED
+  CHECKED_IN
+  VOID
+}
+
+model Ticket {
+  id            String       @id @default(uuid()) @db.Uuid
+  orderId       String       @db.Uuid
+  orderItemId   String       @db.Uuid
+  ticketTypeId  String       @db.Uuid
+  eventId       String       @db.Uuid
+  userId        String       @db.Uuid
+  serialNumber  Int
+  status        TicketStatus @default(ISSUED)
+  checkedInAt   DateTime?    @db.Timestamptz
+  checkedInById String?      @db.Uuid
+  createdAt     DateTime     @default(now()) @db.Timestamptz
+  updatedAt     DateTime     @updatedAt @db.Timestamptz
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+  event      Event      @relation(fields: [eventId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([orderItemId, serialNumber])
+  @@index([userId, createdAt])
+  @@index([eventId, status])
+  @@index([orderId])
+  @@map("tickets")
 }
 
 enum PaymentStatus {
