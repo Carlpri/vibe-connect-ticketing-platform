@@ -15,6 +15,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   scroll-behavior: smooth;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
 }
 
 #root {
@@ -98,4 +100,90 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.5s ease both;
+}
+
+@keyframes heroKenBurns {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes heroContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-bg-kenburns {
+  animation: heroKenBurns 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes sectionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pillEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.home-section-reveal {
+  animation: sectionReveal 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.home-category-pill {
+  animation: pillEnter 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.home-event-rail-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-event-rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.home-event-rail-scroll::after {
+  content: '';
+  flex: 0 0 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-bg-kenburns,
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .home-section-reveal,
+  .home-category-pill,
+  .home-event-rail > * {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }

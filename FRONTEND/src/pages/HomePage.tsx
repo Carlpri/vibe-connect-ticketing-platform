@@ -10,10 +10,9 @@ import {
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import EventCard from '../components/events/EventCard';
 import PageMeta from '../components/common/PageMeta';
-import { EventGridSkeleton } from '../components/common/LoadingSkeleton';
+import HomeEventRail from '../components/home/HomeEventRail';
+import HomeSectionHeader from '../components/home/HomeSectionHeader';
 import { useEventsList } from '../hooks/useEventsList';
 import { colors } from '../styles/theme';
 
@@ -49,7 +48,7 @@ export default function HomePage() {
   const nearYouEvents = events.slice(4, 8).length ? events.slice(4, 8) : events.slice(0, 4);
 
   return (
-    <Box sx={{ width: '100%', bgcolor: colors.bg, minHeight: '100vh' }}>
+    <Box sx={{ width: '100%', maxWidth: '100%', bgcolor: colors.bg, minHeight: '100vh', overflowX: 'hidden' }}>
       <PageMeta path="/" />
       {error && (
         <Container maxWidth="lg" sx={{ pt: 2 }}>
@@ -64,14 +63,21 @@ export default function HomePage() {
           minHeight: { xs: '80vh', md: '86vh' },
           display: 'flex',
           alignItems: 'flex-end',
-          backgroundImage: `url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1920&q=85')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center 35%',
           overflow: 'hidden',
           mt: '-64px', // pull up underneath transparent/blurred navbar
           pt: '64px',
         }}
       >
+        <Box
+          className="hero-bg-kenburns"
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1920&q=85')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 35%',
+          }}
+        />
         {/* Strong dark gradient overlay at bottom for readability */}
         <Box
           sx={{
@@ -100,6 +106,7 @@ export default function HomePage() {
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 mb: { xs: 1.5, md: 2 },
+                animation: 'heroContentIn 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both',
               }}
             >
               LIVE EXPERIENCES • KENYA
@@ -118,6 +125,7 @@ export default function HomePage() {
                 color: '#FFFFFF',
                 mb: { xs: 2, md: 2.5 },
                 textShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                animation: 'heroContentIn 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.12s both',
               }}
             >
               DISCOVER YOUR NEXT EXPERIENCE
@@ -133,6 +141,7 @@ export default function HomePage() {
                 maxWidth: 620,
                 mb: { xs: 3, md: 4 },
                 textShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                animation: 'heroContentIn 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both',
               }}
             >
               Kenya’s front row to live concerts, cultural festivals, parties, and campus vibes. Instant M-Pesa checkout, verified tickets.
@@ -152,6 +161,12 @@ export default function HomePage() {
                 borderRadius: '8px',
                 bgcolor: '#FEFDFB',
                 boxShadow: '0 8px 30px rgba(0, 0, 0, 0.4)',
+                animation: 'heroContentIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.28s both',
+                transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+                '&:focus-within': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)',
+                },
               }}
             >
               <Box sx={{ p: 1, display: 'flex', color: colors.mutedFg }}>
@@ -208,22 +223,26 @@ export default function HomePage() {
       >
         <Container maxWidth="lg">
           <Box
+            className="hide-scrollbar"
             sx={{
               display: 'flex',
               alignItems: 'center',
               gap: 1.5,
               overflowX: 'auto',
               py: 0.5,
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
+              overscrollBehaviorX: 'contain',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x pan-y pinch-zoom',
+              scrollSnapType: 'x proximity',
             }}
           >
-            {CATEGORIES.map((cat) => (
+            {CATEGORIES.map((cat, index) => (
               <Box
                 key={cat}
                 onClick={() => navigate(`/events?category=${cat}`)}
                 sx={{
                   flexShrink: 0,
+                  animation: `pillEnter 0.45s cubic-bezier(0.4, 0, 0.2, 1) ${0.04 * index}s both`,
                   px: 2.2,
                   py: 0.9,
                   borderRadius: '999px',
@@ -234,7 +253,9 @@ export default function HomePage() {
                   letterSpacing: '0.04em',
                   textTransform: 'uppercase',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  scrollSnapAlign: 'start',
+                  transition: 'transform 0.2s ease, background-color 0.2s ease, color 0.2s ease',
+                  '&:active': { transform: 'scale(0.97)' },
                   '&:hover': {
                     bgcolor: colors.limeFg,
                     color: colors.lime,
@@ -249,232 +270,80 @@ export default function HomePage() {
       </Box>
 
       {/* ── Collection 1: Trending Now (Light Theme #F7F4EE) ── */}
-      <Box sx={{ py: { xs: 6, md: 9 } }}>
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
-            <Box>
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 800,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: colors.coral,
-                  display: 'block',
-                  mb: 0.5,
-                }}
-              >
-                HOT RIGHT NOW
-              </Typography>
-              <Typography
-                variant="h2"
-                sx={{
-                  fontFamily: '"Archivo Black", sans-serif',
-                  fontWeight: 400,
-                  fontSize: { xs: '1.8rem', sm: '2.4rem', md: '2.8rem' },
-                  textTransform: 'uppercase',
-                  lineHeight: 1,
-                  letterSpacing: '-0.02em',
-                  color: colors.fg,
-                }}
-              >
-                TRENDING NOW
-              </Typography>
-            </Box>
-            <Button
-              component={Link}
-              to="/events"
-              endIcon={<ArrowForwardIcon />}
-              sx={{
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: colors.fg,
-                fontSize: '0.85rem',
-                letterSpacing: '0.04em',
-                '&:hover': { color: colors.coral },
-              }}
-            >
-              View All
-            </Button>
-          </Box>
-
-          {showEventSkeleton ? (
-            <EventGridSkeleton count={4} />
-          ) : (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-                gap: { xs: 2, sm: 3, md: 3.5 },
-              }}
-            >
-              {trendingEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </Box>
-          )}
+      <Box className="home-section-reveal" sx={{ py: { xs: 5, md: 9 }, overflow: 'hidden', width: '100%', animationDelay: '0.05s' }}>
+        <Container maxWidth="lg" sx={{ minWidth: 0 }}>
+          <HomeSectionHeader
+            eyebrow="HOT RIGHT NOW"
+            title="TRENDING NOW"
+            linkTo="/events"
+            linkLabel="View All"
+            animationDelay="0.05s"
+          />
+          <HomeEventRail
+            events={trendingEvents}
+            loading={showEventSkeleton}
+            animationBaseDelay={0.1}
+          />
         </Container>
       </Box>
 
       {/* ── Collection 2: Popular This Weekend — Near-Black INK Background (#1C1916) ── */}
       <Box
+        className="home-section-reveal"
         sx={{
           bgcolor: colors.ink,
           color: colors.inkFg,
           py: { xs: 7, md: 10 },
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          overflow: 'hidden',
+          width: '100%',
+          animationDelay: '0.12s',
         }}
       >
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
-            <Box>
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 800,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: colors.lime,
-                  display: 'block',
-                  mb: 0.5,
-                }}
-              >
-                FRIDAY TO SUNDAY
-              </Typography>
-              <Typography
-                variant="h2"
-                sx={{
-                  fontFamily: '"Archivo Black", sans-serif',
-                  fontWeight: 400,
-                  fontSize: { xs: '1.8rem', sm: '2.4rem', md: '2.8rem' },
-                  textTransform: 'uppercase',
-                  lineHeight: 1,
-                  letterSpacing: '-0.02em',
-                  color: colors.inkFg,
-                }}
-              >
-                POPULAR THIS WEEKEND
-              </Typography>
-            </Box>
-            <Button
-              component={Link}
-              to="/events?weekend=true"
-              endIcon={<ArrowForwardIcon />}
-              sx={{
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: colors.lime,
-                fontSize: '0.85rem',
-                letterSpacing: '0.04em',
-                '&:hover': { color: colors.limeLt },
-              }}
-            >
-              See Weekend
-            </Button>
-          </Box>
-
-          {showEventSkeleton ? (
-            <EventGridSkeleton count={4} />
-          ) : (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-                gap: { xs: 2, sm: 3, md: 3.5 },
-              }}
-            >
-              {weekendEvents.map((event) => (
-                <Box
-                  key={`wknd-${event.id}`}
-                  sx={{
-                    '& .MuiTypography-root': {
-                      '&:has(LocationOnIcon)': { color: 'rgba(250, 247, 242, 0.65)' },
-                    },
-                    '& h3, & .MuiTypography-h6, & .MuiTypography-root[class*="Archivo"]': {
-                      color: `${colors.inkFg} !important`,
-                    },
-                  }}
-                >
-                  <EventCard event={event} />
-                </Box>
-              ))}
-            </Box>
-          )}
+        <Container maxWidth="lg" sx={{ minWidth: 0 }}>
+          <HomeSectionHeader
+            eyebrow="FRIDAY TO SUNDAY"
+            title="POPULAR THIS WEEKEND"
+            eyebrowColor={colors.lime}
+            titleColor={colors.inkFg}
+            linkTo="/events?weekend=true"
+            linkLabel="See Weekend"
+            linkColor={colors.lime}
+            linkHoverColor={colors.limeLt}
+            animationDelay="0.08s"
+          />
+          <HomeEventRail
+            events={weekendEvents}
+            loading={showEventSkeleton}
+            darkSurface
+            animationBaseDelay={0.12}
+          />
         </Container>
       </Box>
 
       {/* ── Collection 3: Events Near You (Light Theme #F7F4EE) ── */}
-      <Box sx={{ py: { xs: 6, md: 9 } }}>
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
-            <Box>
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 800,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: colors.coral,
-                  display: 'block',
-                  mb: 0.5,
-                }}
-              >
-                NAIROBI • MOMBASA • KISUMU
-              </Typography>
-              <Typography
-                variant="h2"
-                sx={{
-                  fontFamily: '"Archivo Black", sans-serif',
-                  fontWeight: 400,
-                  fontSize: { xs: '1.8rem', sm: '2.4rem', md: '2.8rem' },
-                  textTransform: 'uppercase',
-                  lineHeight: 1,
-                  letterSpacing: '-0.02em',
-                  color: colors.fg,
-                }}
-              >
-                EVENTS NEAR YOU
-              </Typography>
-            </Box>
-            <Button
-              component={Link}
-              to="/events"
-              endIcon={<ArrowForwardIcon />}
-              sx={{
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: colors.fg,
-                fontSize: '0.85rem',
-                letterSpacing: '0.04em',
-                '&:hover': { color: colors.coral },
-              }}
-            >
-              Discover More
-            </Button>
-          </Box>
-
-          {showEventSkeleton ? (
-            <EventGridSkeleton count={4} />
-          ) : (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-                gap: { xs: 2, sm: 3, md: 3.5 },
-              }}
-            >
-              {nearYouEvents.map((event) => (
-                <EventCard key={`near-${event.id}`} event={event} />
-              ))}
-            </Box>
-          )}
+      <Box className="home-section-reveal" sx={{ py: { xs: 5, md: 9 }, overflow: 'hidden', width: '100%', animationDelay: '0.18s' }}>
+        <Container maxWidth="lg" sx={{ minWidth: 0 }}>
+          <HomeSectionHeader
+            eyebrow="NAIROBI • MOMBASA • KISUMU"
+            title="EVENTS NEAR YOU"
+            linkTo="/events"
+            linkLabel="Discover"
+            animationDelay="0.1s"
+          />
+          <HomeEventRail
+            events={nearYouEvents}
+            loading={showEventSkeleton}
+            animationBaseDelay={0.14}
+          />
         </Container>
       </Box>
 
       {/* ── Section 4: Lime Promotional Block: “YOUR CITY IS SHOWING UP.” ── */}
       <Container maxWidth="lg" sx={{ pb: { xs: 8, md: 10 } }}>
         <Box
+          className="animate-fade-in-up"
           sx={{
             bgcolor: colors.lime,
             borderRadius: '8px',
@@ -485,6 +354,13 @@ export default function HomePage() {
             justifyContent: 'space-between',
             gap: 4,
             boxShadow: '0 12px 40px rgba(181, 224, 42, 0.25)',
+            transition: 'transform 0.35s ease, box-shadow 0.35s ease',
+            '@media (hover: hover)': {
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 16px 48px rgba(181, 224, 42, 0.32)',
+              },
+            },
           }}
         >
           <Box sx={{ maxWidth: 640 }}>

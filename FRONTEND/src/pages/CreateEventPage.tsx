@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -15,7 +15,7 @@ import {
   CircularProgress,
   Tooltip,
 } from '@mui/material';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -23,7 +23,7 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import toast from 'react-hot-toast';
 
 import { eventService } from '../services/eventService';
-import type { CreateEventInput, CreateTicketTypeInput, EventFormat, EventStatus } from '../types';
+import type { CreateEventInput, CreateTicketTypeInput, EventFormat, EventStatus, UpdateEventInput } from '../types';
 import { colors } from '../styles/theme';
 import { getApiErrorMessage } from '../utils/format';
 
@@ -80,7 +80,10 @@ const VENUE_PRESETS = [
 
 export default function CreateEventPage() {
   const navigate = useNavigate();
+  const { eventId } = useParams<{ eventId: string }>();
+  const isEditMode = Boolean(eventId);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingEvent, setLoadingEvent] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
 
   // Form State
@@ -129,6 +132,49 @@ export default function CreateEventPage() {
       isActive: true,
     },
   ]);
+
+  useEffect(() => {
+    if (!eventId) return;
+
+    let cancelled = false;
+    (async () => {
+      setLoadingEvent(true);
+      setError(null);
+      try {
+        const res = await eventService.getEventById(eventId);
+        const event = res.data;
+        if (!event || cancelled) return;
+
+        setTitle(event.title);
+        setDescription(event.description);
+        setCategory(event.category);
+        setFormat(event.format || 'PHYSICAL');
+        setStatus(event.status);
+        setCoverImage(event.coverImage || '');
+        setStartsAt(formatForInput(new Date(event.startsAt)));
+        setEndsAt(formatForInput(new Date(event.endsAt || event.startsAt)));
+        setVenue(event.venue || '');
+        setCity(event.city || '');
+        setCounty(event.county || '');
+        setAddress(event.address || '');
+        setLatitude(event.latitude ?? '');
+        setLongitude(event.longitude ?? '');
+        setOnlineUrl(event.onlineUrl || '');
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(getApiErrorMessage(err));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingEvent(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
 
   const handleAddTicketTier = () => {
     setTicketTypes((prev) => [
@@ -194,22 +240,24 @@ export default function CreateEventPage() {
       setError('Venue name is required for physical and hybrid events.');
       return;
     }
-    if (ticketTypes.length === 0) {
-      setError('Please add at least one ticket tier.');
-      return;
-    }
-    for (const t of ticketTypes) {
-      if (!t.name.trim()) {
-        setError('Every ticket tier must have a name.');
+    if (!isEditMode) {
+      if (ticketTypes.length === 0) {
+        setError('Please add at least one ticket tier.');
         return;
       }
-      if (t.capacity <= 0) {
-        setError(`Ticket tier "${t.name}" capacity must be greater than 0.`);
-        return;
-      }
-      if (t.priceKes < 0) {
-        setError(`Ticket tier "${t.name}" price cannot be negative.`);
-        return;
+      for (const t of ticketTypes) {
+        if (!t.name.trim()) {
+          setError('Every ticket tier must have a name.');
+          return;
+        }
+        if (t.capacity <= 0) {
+          setError(`Ticket tier "${t.name}" capacity must be greater than 0.`);
+          return;
+        }
+        if (t.priceKes < 0) {
+          setError(`Ticket tier "${t.name}" price cannot be negative.`);
+          return;
+        }
       }
     }
 
@@ -242,14 +290,41 @@ export default function CreateEventPage() {
 
     setSubmitting(true);
     try {
-      const res = await eventService.createEvent(payload);
-      toast.success('Event published successfully! 🎉');
-      if (res.data?.slug || res.data?.id) {
-        navigate(`/events/${res.data.slug || res.data.id}`);
+      if (isEditMode && eventId) {
+        const updatePayload: UpdateEventInput = {
+          title: payload.title,
+          description: payload.description,
+          category: payload.category,
+          coverImage: payload.coverImage,
+          format: payload.format,
+          status: payload.status,
+          startsAt: payload.startsAt,
+          endsAt: payload.endsAt,
+          venue: payload.venue,
+          city: payload.city,
+          county: payload.county,
+          address: payload.address,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          onlineUrl: payload.onlineUrl,
+        };
+        const res = await eventService.updateEvent(eventId, updatePayload);
+        toast.success('Event updated successfully');
+        if (res.data?.slug || res.data?.id) {
+          navigate(`/events/${res.data.slug || res.data.id}`);
+        } else {
+          navigate('/organizer');
+        }
       } else {
-        navigate('/organizer');
+        const res = await eventService.createEvent(payload);
+        toast.success('Event published successfully! 🎉');
+        if (res.data?.slug || res.data?.id) {
+          navigate(`/events/${res.data.slug || res.data.id}`);
+        } else {
+          navigate('/organizer');
+        }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getApiErrorMessage(err));
     } finally {
       setSubmitting(false);
@@ -280,10 +355,12 @@ export default function CreateEventPage() {
             mb: 1,
           }}
         >
-          Create New Event
+          {isEditMode ? 'Edit Event' : 'Create New Event'}
         </Typography>
         <Typography variant="body1" sx={{ color: colors.mutedFg, mb: 4 }}>
-          Fill in the details below to publish your event to Kenyan discovery channels.
+          {isEditMode
+            ? 'Update your listing details, schedule, and venue. Ticket tiers stay unchanged for now.'
+            : 'Fill in the details below to publish your event to Kenyan discovery channels.'}
         </Typography>
 
         {error && (
@@ -292,6 +369,11 @@ export default function CreateEventPage() {
           </Alert>
         )}
 
+        {loadingEvent ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
         <form onSubmit={handleSubmit}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {/* Section 1: Event Details */}
@@ -629,7 +711,8 @@ export default function CreateEventPage() {
               </Card>
             )}
 
-            {/* Section 4: Ticket Tiers */}
+            {/* Section 4: Ticket Tiers (create only) */}
+            {!isEditMode && (
             <Card
               sx={{
                 p: { xs: 2.5, md: 3.5 },
@@ -754,6 +837,13 @@ export default function CreateEventPage() {
                 ))}
               </Box>
             </Card>
+            )}
+
+            {isEditMode && (
+              <Alert severity="info">
+                Ticket pricing and capacity cannot be edited here yet. Contact support if you need tier changes after tickets have sold.
+              </Alert>
+            )}
 
             {/* Publish Button */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pt: 2 }}>
@@ -797,11 +887,18 @@ export default function CreateEventPage() {
                   },
                 }}
               >
-                {submitting ? 'Publishing Event...' : 'Publish Event Live'}
+                {submitting
+                  ? isEditMode
+                    ? 'Saving Changes...'
+                    : 'Publishing Event...'
+                  : isEditMode
+                    ? 'Save Changes'
+                    : 'Publish Event Live'}
               </Button>
             </Box>
           </Box>
         </form>
+        )}
       </Container>
     </Box>
   );

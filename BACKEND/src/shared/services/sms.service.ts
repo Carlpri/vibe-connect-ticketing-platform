@@ -198,15 +198,27 @@ export class SmsService {
         },
       });
 
-      const data = (await response.json()) as any;
+      const rawBody = await response.text();
+      let data: Record<string, unknown> | null = null;
+      try {
+        data = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : null;
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
+        const errorMessage =
+          (data?.errorMessage as string | undefined) ||
+          rawBody.trim() ||
+          response.statusText;
         return {
           success: false,
-          message: `Africa's Talking authentication failed (${response.status}): ${data?.errorMessage || response.statusText}`,
-          details: data,
+          message: `Africa's Talking authentication failed (${response.status}): ${errorMessage}`,
+          details: data ?? { rawBody: rawBody.slice(0, 200) },
         };
       }
+
+      const userData = data?.UserData as { balance?: string } | undefined;
 
       return {
         success: true,
@@ -214,7 +226,7 @@ export class SmsService {
         details: {
           isSandbox,
           username: isSandbox ? 'sandbox' : username,
-          balance: data?.UserData?.balance,
+          balance: userData?.balance,
         },
       };
     } catch (err: any) {

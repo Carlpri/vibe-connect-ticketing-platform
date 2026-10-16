@@ -140,10 +140,16 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
         color: 'inherit',
         cursor: 'pointer',
         transition: 'transform 0.2s ease',
-        '&:hover': {
-          '& .card-img': {
-            transform: 'scale(1.04)',
+        '@media (hover: hover)': {
+          '&:hover': {
+            transform: 'translateY(-3px)',
+            '& .card-img': {
+              transform: 'scale(1.04)',
+            },
           },
+        },
+        '&:active': {
+          transform: 'scale(0.98)',
         },
       }}
     >

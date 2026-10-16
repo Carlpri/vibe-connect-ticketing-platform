@@ -37,7 +37,7 @@ export default function App() {
           <AnalyticsProvider>
           <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
             <Navbar />
-            <Box component="main" sx={{ flexGrow: 1 }}>
+            <Box component="main" sx={{ flexGrow: 1, minWidth: 0, overflowX: 'hidden' }}>
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/events" element={<EventsPage />} />
@@ -70,6 +70,14 @@ export default function App() {
                 />
                 <Route
                   path="/create-event"
+                  element={
+                    <ProtectedRoute requiredRoles={['ORGANIZER', 'ADMIN']}>
+                      <CreateEventPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organizer/events/:eventId/edit"
                   element={
                     <ProtectedRoute requiredRoles={['ORGANIZER', 'ADMIN']}>
                       <CreateEventPage />

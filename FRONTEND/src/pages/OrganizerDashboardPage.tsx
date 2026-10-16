@@ -23,6 +23,7 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import PlaceIcon from '@mui/icons-material/Place';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import toast from 'react-hot-toast';
@@ -582,7 +583,24 @@ export default function OrganizerDashboardPage() {
                     </Box>
 
                     {/* Actions */}
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Button
+                        component={Link}
+                        to={`/organizer/events/${event.id}/edit`}
+                        variant="contained"
+                        size="small"
+                        startIcon={<EditIcon />}
+                        sx={{
+                          bgcolor: colors.lime,
+                          color: colors.limeFg,
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          '&:hover': { bgcolor: colors.limeLt },
+                        }}
+                      >
+                        Edit Details
+                      </Button>
                       <Button
                         component={Link}
                         to={`/events/${event.slug || event.id}`}
