@@ -65,11 +65,17 @@ model User {
   phoneVerificationAttempts      Int       @default(0)
   phoneVerificationCooldownUntil DateTime? @db.Timestamptz
 
+  // Password Reset Fields (tokens stored as SHA-256 hashes only)
+  passwordResetTokenHash         String?
+  passwordResetExpiresAt         DateTime? @db.Timestamptz
+  passwordResetCooldownUntil     DateTime? @db.Timestamptz
+
   orders  Order[]
   events  Event[]
   tickets Ticket[]
 
   @@index([emailVerificationTokenHash])
+  @@index([passwordResetTokenHash])
   @@map("users")
 }
 
