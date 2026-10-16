@@ -4,16 +4,21 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import ExploreIcon from '@mui/icons-material/Explore';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import EmailIcon from '@mui/icons-material/Email';
+import { useAuth } from '../contexts/AuthContext';
 import { formatKes, formatDate } from '../utils/format';
 import { colors } from '../styles/theme';
 
 export default function OrderConfirmationPage() {
   const location = useLocation();
+  const { user } = useAuth();
   const order = location.state?.order;
 
   if (!order) {
     return <Navigate to="/my-tickets" replace />;
   }
+
+  const isFullyVerified = Boolean(user?.emailVerified && user?.phoneVerified);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: { xs: 5, md: 8 }, pb: 14 }}>
@@ -69,29 +74,106 @@ export default function OrderConfirmationPage() {
             Your unique digital passes are ready in My Tickets. Each seat gets its own signed VC1 QR code for gate scanning.
           </Typography>
 
-          <Box
-            sx={{
-              p: 2.5,
-              borderRadius: '8px',
-              bgcolor: colors.bg,
-              border: `1px solid ${colors.border}`,
-              display: 'inline-flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 1,
-              mb: 3.5,
-              width: '100%',
-              maxWidth: 360,
-            }}
-          >
-            <VerifiedUserIcon sx={{ fontSize: 36, color: colors.coral }} />
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.fg }}>
-              Verify to unlock & download
-            </Typography>
-            <Typography variant="body2" sx={{ color: colors.mutedFg, textAlign: 'center' }}>
-              Confirm your email and phone number, then open My Tickets to view, print, or download each pass QR as PNG.
-            </Typography>
-          </Box>
+          {/* Verification Reminder Panel with CTA Button */}
+          {isFullyVerified ? (
+            <Box
+              sx={{
+                p: 2.5,
+                borderRadius: '8px',
+                bgcolor: 'rgba(43, 184, 90, 0.08)',
+                border: '1px solid rgba(43, 184, 90, 0.25)',
+                display: 'inline-flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1,
+                mb: 3.5,
+                width: '100%',
+                maxWidth: 400,
+              }}
+            >
+              <CheckCircleIcon sx={{ fontSize: 32, color: colors.success }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.fg }}>
+                Account Fully Verified
+              </Typography>
+              <Typography variant="body2" sx={{ color: colors.mutedFg, textAlign: 'center', fontSize: '0.86rem' }}>
+                Your passes and gate QR codes are unlocked and ready to view and download in My Tickets.
+              </Typography>
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                p: 2.5,
+                borderRadius: '8px',
+                bgcolor: colors.bg,
+                border: `1px solid ${colors.border}`,
+                display: 'inline-flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1.2,
+                mb: 3.5,
+                width: '100%',
+                maxWidth: 400,
+              }}
+            >
+              <VerifiedUserIcon sx={{ fontSize: 36, color: colors.coral }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.fg }}>
+                Verify to unlock & download
+              </Typography>
+              <Typography variant="body2" sx={{ color: colors.mutedFg, textAlign: 'center', fontSize: '0.86rem' }}>
+                Confirm your email address to unlock and reveal each pass QR code, print, or download passes.
+              </Typography>
+
+              {/* CTA Action Buttons */}
+              <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
+                {(!user || !user.emailVerified) && (
+                  <Button
+                    component={Link}
+                    to="/verify-email"
+                    variant="contained"
+                    size="small"
+                    startIcon={<EmailIcon sx={{ fontSize: 17 }} />}
+                    sx={{
+                      bgcolor: colors.lime,
+                      color: colors.limeFg,
+                      fontWeight: 800,
+                      fontSize: '0.82rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      px: 2.5,
+                      py: 0.8,
+                      borderRadius: '6px',
+                      boxShadow: '0 2px 8px rgba(181, 224, 42, 0.25)',
+                      '&:hover': { bgcolor: colors.limeLt },
+                    }}
+                  >
+                    Verify Email
+                  </Button>
+                )}
+                {user && !user.phoneVerified && (
+                  <Button
+                    component={Link}
+                    to="/profile"
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      borderColor: colors.border,
+                      color: colors.fg,
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      px: 2,
+                      py: 0.8,
+                      borderRadius: '6px',
+                      '&:hover': { borderColor: colors.fg, bgcolor: 'transparent' },
+                    }}
+                  >
+                    Verify Phone
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          )}
 
           {/* Ticket Information Panel */}
           <Box

@@ -9,6 +9,7 @@ import {
   Tabs,
   Tab,
   IconButton,
+  Button,
   Alert,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -21,13 +22,77 @@ import { EventGridSkeleton } from '../components/common/LoadingSkeleton';
 import { useEventsList } from '../hooks/useEventsList';
 import { colors } from '../styles/theme';
 
+/**
+ * Robust date matching for 'Today', 'This Weekend', and 'This Month'.
+ */
+function matchesDateFilter(eventDateStr: string, eventEndStr: string | undefined, filter: string): boolean {
+  if (filter === 'Any Date' || filter === 'All') return true;
+
+  const eventStart = new Date(eventDateStr);
+  if (isNaN(eventStart.getTime())) return true;
+  const eventEnd = eventEndStr ? new Date(eventEndStr) : eventStart;
+
+  const now = new Date();
+
+  if (filter === 'Today') {
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    // Event starts today or is ongoing today
+    return (
+      (eventStart >= todayStart && eventStart <= todayEnd) ||
+      (eventStart <= todayStart && eventEnd >= todayStart)
+    );
+  }
+
+  if (filter === 'This Weekend') {
+    // Current or upcoming weekend: Friday to Sunday
+    const currentDay = now.getDay(); // 0 is Sunday, 5 is Friday, 6 is Saturday
+    const friday = new Date(now);
+
+    if (currentDay === 0) {
+      // It's Sunday today -> weekend started 2 days ago (Friday)
+      friday.setDate(now.getDate() - 2);
+    } else if (currentDay === 6) {
+      // It's Saturday today -> weekend started yesterday (Friday)
+      friday.setDate(now.getDate() - 1);
+    } else if (currentDay === 5) {
+      // It's Friday today
+    } else {
+      // Monday to Thursday -> upcoming Friday
+      friday.setDate(now.getDate() + (5 - currentDay));
+    }
+    friday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(friday);
+    sunday.setDate(friday.getDate() + 2);
+    sunday.setHours(23, 59, 59, 999);
+
+    return (
+      (eventStart >= friday && eventStart <= sunday) ||
+      (eventStart <= friday && eventEnd >= friday)
+    );
+  }
+
+  if (filter === 'This Month') {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return (
+      (eventStart >= monthStart && eventStart <= monthEnd) ||
+      (eventStart <= monthStart && eventEnd >= monthStart)
+    );
+  }
+
+  return true;
+}
+
 export default function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialSearch = searchParams.get('search') || '';
   const initialCategory = searchParams.get('category') || 'All Categories';
   const initialLocation = searchParams.get('location') || searchParams.get('city') || 'All Locations';
-  const initialDate = searchParams.get('date') || 'Any Date';
+  const isWeekendParam = searchParams.get('weekend') === 'true';
+  const initialDate = isWeekendParam ? 'This Weekend' : (searchParams.get('date') || 'Any Date');
   const initialPrice = searchParams.get('price') || 'Any Price';
 
   const [search, setSearch] = useState(initialSearch);
@@ -35,9 +100,14 @@ export default function EventsPage() {
   const [location, setLocation] = useState(initialLocation);
   const [category, setCategory] = useState(initialCategory);
   const [price, setPrice] = useState(initialPrice);
-  const [timeTab, setTimeTab] = useState<'All' | 'Today' | 'This Weekend' | 'This Month'>('All');
+  const [timeTab, setTimeTab] = useState<'All' | 'Today' | 'This Weekend' | 'This Month'>(
+    initialDate === 'Today' || initialDate === 'This Weekend' || initialDate === 'This Month'
+      ? initialDate
+      : 'All'
+  );
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Query backend with base params (without overly restrictive parameters so client-side filter is instant)
   const listQuery = useMemo(
     () => ({
       search: search || undefined,
@@ -50,7 +120,7 @@ export default function EventsPage() {
   const { events, loading, error } = useEventsList(listQuery);
   const awaitingFirstLoad = loading && events.length === 0;
 
-  // Sync to URL
+  // Sync state to URL search parameters
   useEffect(() => {
     const params: Record<string, string> = {};
     if (search) params.search = search;
@@ -60,6 +130,26 @@ export default function EventsPage() {
     if (price !== 'Any Price') params.price = price;
     setSearchParams(params, { replace: true });
   }, [search, category, location, date, price, setSearchParams]);
+
+  // Synchronize Date dropdown changes with Time tabs
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate);
+    if (newDate === 'Any Date') {
+      setTimeTab('All');
+    } else if (newDate === 'Today' || newDate === 'This Weekend' || newDate === 'This Month') {
+      setTimeTab(newDate);
+    }
+  };
+
+  // Synchronize Time tabs changes with Date dropdown
+  const handleTimeTabChange = (newTab: 'All' | 'Today' | 'This Weekend' | 'This Month') => {
+    setTimeTab(newTab);
+    if (newTab === 'All') {
+      setDate('Any Date');
+    } else {
+      setDate(newTab);
+    }
+  };
 
   const handleClear = () => {
     setSearch('');
@@ -73,34 +163,71 @@ export default function EventsPage() {
   const hasActiveFilters =
     Boolean(search) ||
     date !== 'Any Date' ||
+    timeTab !== 'All' ||
     location !== 'All Locations' ||
     category !== 'All Categories' ||
     price !== 'Any Price';
 
-  // Client-side filtering for price and time tab if needed
+  // 100% effective client-side filtering on all attributes
   const filteredEvents = events.filter((ev) => {
-    // Price filter
-    if (price === 'Free') {
-      const minPrice = ev.ticketTypes?.length
-        ? Math.min(...ev.ticketTypes.map((t) => t.priceKes))
-        : 0;
-      if (minPrice > 0) return false;
-    } else if (price === 'Under KES 500') {
-      const minPrice = ev.ticketTypes?.length
-        ? Math.min(...ev.ticketTypes.map((t) => t.priceKes))
-        : 0;
-      if (minPrice >= 500) return false;
-    } else if (price === 'KES 500–1,000') {
-      const minPrice = ev.ticketTypes?.length
-        ? Math.min(...ev.ticketTypes.map((t) => t.priceKes))
-        : 0;
-      if (minPrice < 500 || minPrice > 1000) return false;
-    } else if (price === 'Over KES 1,000') {
-      const minPrice = ev.ticketTypes?.length
-        ? Math.min(...ev.ticketTypes.map((t) => t.priceKes))
-        : 0;
-      if (minPrice <= 1000) return false;
+    // 1. Text search (matches title, description, venue, city, category, or organizer)
+    if (search.trim()) {
+      const term = search.trim().toLowerCase();
+      const titleMatch = ev.title?.toLowerCase().includes(term);
+      const descMatch = ev.description?.toLowerCase().includes(term);
+      const venueMatch = ev.venue?.toLowerCase().includes(term);
+      const cityMatch = ev.city?.toLowerCase().includes(term);
+      const catMatch = ev.category?.toLowerCase().includes(term);
+      const orgMatch = ev.organizerName?.toLowerCase().includes(term);
+      if (!titleMatch && !descMatch && !venueMatch && !cityMatch && !catMatch && !orgMatch) {
+        return false;
+      }
     }
+
+    // 2. Category filter
+    if (category !== 'All Categories') {
+      if (ev.category?.toLowerCase() !== category.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // 3. Location filter (matches city, venue, or county)
+    if (location !== 'All Locations') {
+      const loc = location.toLowerCase();
+      const cityMatch = ev.city?.toLowerCase().includes(loc);
+      const venueMatch = ev.venue?.toLowerCase().includes(loc);
+      const countyMatch = ev.county?.toLowerCase().includes(loc);
+      if (!cityMatch && !venueMatch && !countyMatch) {
+        return false;
+      }
+    }
+
+    // 4. Date / Time tab filter
+    const activeDateFilter = date !== 'Any Date' ? date : (timeTab !== 'All' ? timeTab : 'Any Date');
+    if (!matchesDateFilter(ev.startsAt, ev.endsAt, activeDateFilter)) {
+      return false;
+    }
+
+    // 5. Price filter
+    const ticketPrices = ev.ticketTypes?.map((t) => t.priceKes) ?? [];
+    const minPrice = ticketPrices.length > 0 ? Math.min(...ticketPrices) : 0;
+
+    if (price === 'Free') {
+      const hasFree = ticketPrices.length === 0 || minPrice === 0 || ticketPrices.some((p) => p === 0);
+      if (!hasFree) return false;
+    } else if (price === 'Under KES 500') {
+      const hasUnder500 = minPrice < 500 || ticketPrices.some((p) => p < 500);
+      if (!hasUnder500) return false;
+    } else if (price === 'KES 500–1,000') {
+      const hasInRange =
+        (minPrice >= 500 && minPrice <= 1000) ||
+        ticketPrices.some((p) => p >= 500 && p <= 1000);
+      if (!hasInRange) return false;
+    } else if (price === 'Over KES 1,000') {
+      const hasOver1000 = minPrice > 1000 || ticketPrices.some((p) => p > 1000);
+      if (!hasOver1000) return false;
+    }
+
     return true;
   });
 
@@ -160,7 +287,7 @@ export default function EventsPage() {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              p: '2px 8px',
+              p: '2px 10px',
               width: { xs: '100%', md: 360 },
               border: `1px solid ${colors.border}`,
               borderRadius: '8px',
@@ -186,7 +313,7 @@ export default function EventsPage() {
         {/* Four Filter Dropdowns */}
         <EventFilters
           selectedDate={date}
-          onDateChange={setDate}
+          onDateChange={handleDateChange}
           selectedLocation={location}
           onLocationChange={setLocation}
           selectedCategory={category}
@@ -210,10 +337,10 @@ export default function EventsPage() {
             mb: 4,
           }}
         >
-          {/* Time tabs */}
+          {/* Time tabs synchronized with Date dropdown */}
           <Tabs
             value={timeTab}
-            onChange={(_, val) => setTimeTab(val)}
+            onChange={(_, val) => handleTimeTabChange(val)}
             sx={{
               minHeight: 36,
               '& .MuiTabs-indicator': { bgcolor: colors.lime, height: 3 },
@@ -239,7 +366,7 @@ export default function EventsPage() {
           </Tabs>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: { xs: '100%', sm: 'auto' }, justifyContent: 'space-between' }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: colors.mutedFg }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: colors.mutedFg }}>
               {awaitingFirstLoad
                 ? 'Loading events…'
                 : `${filteredEvents.length} ${filteredEvents.length === 1 ? 'event' : 'events'} found`}
@@ -319,11 +446,12 @@ export default function EventsPage() {
             >
               NO EVENTS MATCH
             </Typography>
-            <Typography variant="body2" sx={{ color: colors.mutedFg, maxWidth: 400, mb: 3 }}>
+            <Typography variant="body2" sx={{ color: colors.mutedFg, maxWidth: 420, mb: 3 }}>
               Try adjusting your search keywords, clearing your filters, or picking a different date or city.
             </Typography>
             {hasActiveFilters && (
-              <IconButton
+              <Button
+                variant="contained"
                 onClick={handleClear}
                 sx={{
                   bgcolor: colors.lime,
@@ -338,15 +466,16 @@ export default function EventsPage() {
                 }}
               >
                 Clear All Filters
-              </IconButton>
+              </Button>
             )}
           </Box>
         ) : viewMode === 'grid' ? (
+          /* Single event per row horizontally on phone screens (xs: 1fr), 2 on tablet, 4 on desktop */
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-              gap: { xs: 2, sm: 3, md: 3.5 },
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gap: { xs: 2.5, sm: 3, md: 3.5 },
             }}
           >
             {filteredEvents.map((event) => (

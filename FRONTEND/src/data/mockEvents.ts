@@ -1,5 +1,34 @@
 import type { Event } from '../types';
 
+/**
+ * Generates ISO date relative to current time so mock events always stay
+ * realistically scheduled across Today, This Weekend, This Month, and upcoming dates.
+ */
+function getRelativeDate(daysFromNow: number, hours = 19, minutes = 0): { startsAt: string; endsAt: string } {
+  const start = new Date();
+  start.setDate(start.getDate() + daysFromNow);
+  start.setHours(hours, minutes, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(start.getHours() + 5);
+
+  return {
+    startsAt: start.toISOString(),
+    endsAt: end.toISOString(),
+  };
+}
+
+/** Calculate days until the upcoming Friday/Saturday of this weekend */
+function getWeekendOffset(): number {
+  const day = new Date().getDay(); // 0 is Sunday, 5 is Friday, 6 is Saturday
+  if (day === 5) return 0; // Today is Friday
+  if (day === 6) return 0; // Today is Saturday
+  if (day === 0) return 0; // Today is Sunday
+  return 5 - day; // Days until Friday
+}
+
+const weekendOffset = getWeekendOffset();
+
 export const MOCK_EVENTS: Event[] = [
   {
     id: 'evt-001',
@@ -16,12 +45,11 @@ export const MOCK_EVENTS: Event[] = [
     address: 'Carnivore Road, Off Langata Road',
     latitude: -1.3307,
     longitude: 36.7650,
-    startsAt: '2026-11-28T18:00:00Z',
-    endsAt: '2026-11-29T04:00:00Z',
+    ...getRelativeDate(weekendOffset, 18, 0), // Happening This Weekend!
     status: 'PUBLISHED',
     organizerId: 'org-01',
     organizerName: 'Sol Entertainment Ltd',
-    createdAt: '2026-09-01T10:00:00Z',
+    createdAt: new Date().toISOString(),
     ticketTypes: [
       {
         id: 'tt-001',
@@ -50,15 +78,6 @@ export const MOCK_EVENTS: Event[] = [
         available: 82,
         eventId: 'evt-001',
       },
-      {
-        id: 'tt-004',
-        name: 'VVIP Golden Circle',
-        description: 'Front-of-stage lounge, complimentary food & premium bottle service, VIP parking.',
-        priceKes: 15000,
-        capacity: 100,
-        available: 15,
-        eventId: 'evt-001',
-      },
     ],
   },
   {
@@ -76,12 +95,11 @@ export const MOCK_EVENTS: Event[] = [
     address: 'Karen Road, Karen',
     latitude: -1.3196,
     longitude: 36.7103,
-    startsAt: '2026-12-06T12:00:00Z',
-    endsAt: '2026-12-06T23:00:00Z',
+    ...getRelativeDate(weekendOffset + 1, 12, 0), // Happening This Weekend!
     status: 'PUBLISHED',
     organizerId: 'org-02',
     organizerName: 'Muthoni Drummer Queen Productions',
-    createdAt: '2026-09-10T08:00:00Z',
+    createdAt: new Date().toISOString(),
     ticketTypes: [
       {
         id: 'tt-005',
@@ -101,15 +119,6 @@ export const MOCK_EVENTS: Event[] = [
         available: 950,
         eventId: 'evt-002',
       },
-      {
-        id: 'tt-007',
-        name: 'Squad Pass (Group of 4)',
-        description: 'Pack discount for you and 3 friends. Valid for one combined entry.',
-        priceKes: 15000,
-        capacity: 300,
-        available: 60,
-        eventId: 'evt-002',
-      },
     ],
   },
   {
@@ -127,12 +136,11 @@ export const MOCK_EVENTS: Event[] = [
     address: 'Kilifi Creek Road',
     latitude: -3.6305,
     longitude: 39.8499,
-    startsAt: '2026-12-30T14:00:00Z',
-    endsAt: '2027-01-02T18:00:00Z',
+    ...getRelativeDate(20, 14, 0),
     status: 'PUBLISHED',
     organizerId: 'org-03',
     organizerName: 'Baobab Collective',
-    createdAt: '2026-08-20T11:00:00Z',
+    createdAt: new Date().toISOString(),
     ticketTypes: [
       {
         id: 'tt-008',
@@ -141,15 +149,6 @@ export const MOCK_EVENTS: Event[] = [
         priceKes: 7500,
         capacity: 1200,
         available: 430,
-        eventId: 'evt-003',
-      },
-      {
-        id: 'tt-009',
-        name: 'Festival + Baobab Camping',
-        description: '3-Day Festival pass plus reserved tent spot in the shaded eco-campsite.',
-        priceKes: 12000,
-        capacity: 400,
-        available: 90,
         eventId: 'evt-003',
       },
     ],
@@ -169,18 +168,17 @@ export const MOCK_EVENTS: Event[] = [
     address: 'Harry Thuku Road, University Way',
     latitude: -1.2794,
     longitude: 36.8168,
-    startsAt: '2026-11-14T19:00:00Z',
-    endsAt: '2026-11-14T22:30:00Z',
+    ...getRelativeDate(0, 19, 30), // Happening TODAY!
     status: 'PUBLISHED',
     organizerId: 'org-04',
     organizerName: 'Laugh Festival Kenya',
-    createdAt: '2026-09-18T14:00:00Z',
+    createdAt: new Date().toISOString(),
     ticketTypes: [
       {
         id: 'tt-010',
         name: 'Auditorium Gallery',
         description: 'Upper tier seating with full view of stage and screen.',
-        priceKes: 1200,
+        priceKes: 800,
         capacity: 300,
         available: 140,
         eventId: 'evt-004',
@@ -189,18 +187,9 @@ export const MOCK_EVENTS: Event[] = [
         id: 'tt-011',
         name: 'Stalls / Main Floor',
         description: 'Prime lower level seating up close to the comedians.',
-        priceKes: 2500,
+        priceKes: 1500,
         capacity: 450,
         available: 210,
-        eventId: 'evt-004',
-      },
-      {
-        id: 'tt-012',
-        name: 'VIP Front Row + Meet & Greet',
-        description: 'Front 3 rows with backstage pass and photo op with the performers.',
-        priceKes: 5000,
-        capacity: 50,
-        available: 8,
         eventId: 'evt-004',
       },
     ],
@@ -220,12 +209,11 @@ export const MOCK_EVENTS: Event[] = [
     address: 'Karuna Close, Off Lower Kabete Road, Westlands',
     latitude: -1.2590,
     longitude: 36.8045,
-    startsAt: '2026-11-20T08:30:00Z',
-    endsAt: '2026-11-21T18:00:00Z',
+    ...getRelativeDate(7, 8, 30), // Happening This Month!
     status: 'PUBLISHED',
     organizerId: 'org-05',
     organizerName: 'East Africa Tech Hub',
-    createdAt: '2026-09-05T09:00:00Z',
+    createdAt: new Date().toISOString(),
     ticketTypes: [
       {
         id: 'tt-013',
@@ -245,15 +233,6 @@ export const MOCK_EVENTS: Event[] = [
         available: 310,
         eventId: 'evt-005',
       },
-      {
-        id: 'tt-015',
-        name: 'Investor / Founder VIP',
-        description: 'Includes Deal-Room access, Founder-Investor dinner, and private lounge.',
-        priceKes: 12000,
-        capacity: 150,
-        available: 42,
-        eventId: 'evt-005',
-      },
     ],
   },
   {
@@ -271,12 +250,11 @@ export const MOCK_EVENTS: Event[] = [
     address: 'Mombasa Road, Kibra',
     latitude: -1.3095,
     longitude: 36.8219,
-    startsAt: '2026-11-15T15:00:00Z',
-    endsAt: '2026-11-15T18:00:00Z',
+    ...getRelativeDate(4, 15, 0), // Happening This Month!
     status: 'PUBLISHED',
     organizerId: 'org-06',
     organizerName: 'FKF Premier League',
-    createdAt: '2026-09-12T16:00:00Z',
+    createdAt: new Date().toISOString(),
     ticketTypes: [
       {
         id: 'tt-016',
@@ -296,14 +274,174 @@ export const MOCK_EVENTS: Event[] = [
         available: 640,
         eventId: 'evt-006',
       },
+    ],
+  },
+  {
+    id: 'evt-007',
+    title: 'Mombasa Beach Reggae Carnival & Food Festival',
+    slug: 'mombasa-beach-reggae-carnival-food-festival',
+    description:
+      'Roots, rock, reggae and authentic Swahili seafood by the white sands of Nyali Beach. Featuring top coastal soundsystems, live percussion, and sunset beach bonfires.',
+    coverImage: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80',
+    category: 'Parties',
+    format: 'PHYSICAL',
+    venue: 'Nyali Beachfront Park',
+    city: 'Mombasa',
+    county: 'Mombasa',
+    address: 'Nyali Links Road, Mombasa',
+    latitude: -4.0435,
+    longitude: 39.7112,
+    ...getRelativeDate(5, 16, 0), // Happening This Month!
+    status: 'PUBLISHED',
+    organizerId: 'org-07',
+    organizerName: 'Coast Sound Productions',
+    createdAt: new Date().toISOString(),
+    ticketTypes: [
       {
-        id: 'tt-018',
-        name: 'VVIP Presidential Pavilion',
-        description: 'Air-conditioned suite with hospitality and secure reserved parking.',
-        priceKes: 3500,
+        id: 'tt-019',
+        name: 'Early Beach Pass',
+        description: 'Access to beach concerts and seafood village.',
+        priceKes: 700,
+        capacity: 1000,
+        available: 450,
+        eventId: 'evt-007',
+      },
+      {
+        id: 'tt-020',
+        name: 'VIP Sunset Lounge',
+        description: 'Reserved beach cabana and complimentary coconut welcome drink.',
+        priceKes: 2000,
         capacity: 200,
-        available: 38,
-        eventId: 'evt-006',
+        available: 60,
+        eventId: 'evt-007',
+      },
+    ],
+  },
+  {
+    id: 'evt-008',
+    title: 'Dala Sunset Afrobeats & Lakeside Chillout',
+    slug: 'dala-sunset-afrobeats-lakeside-chillout',
+    description:
+      'Vibrant lakeside sundowner with live acoustic jazz, fresh tilapia bites, and soulful Afrobeats as the sun sets over Lake Victoria. The premier weekend hangout in Kisumu.',
+    coverImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
+    category: 'Music',
+    format: 'PHYSICAL',
+    venue: 'Dunga Hill Camp',
+    city: 'Kisumu',
+    county: 'Kisumu',
+    address: 'Dunga Beach Road, Kisumu',
+    latitude: -0.1384,
+    longitude: 34.7368,
+    ...getRelativeDate(weekendOffset, 15, 0), // Happening This Weekend!
+    status: 'PUBLISHED',
+    organizerId: 'org-08',
+    organizerName: 'Lakeside Vibes Entertainment',
+    createdAt: new Date().toISOString(),
+    ticketTypes: [
+      {
+        id: 'tt-021',
+        name: 'Regular Entry',
+        description: 'General lakeside lawn pass.',
+        priceKes: 500,
+        capacity: 800,
+        available: 310,
+        eventId: 'evt-008',
+      },
+    ],
+  },
+  {
+    id: 'evt-009',
+    title: 'Rift Valley Great Run & Crater Festival',
+    slug: 'rift-valley-great-run-crater-festival',
+    description:
+      'Scenic athletic marathon around Menengai Crater followed by an open-air sundowner festival with local acoustic bands and barbecue.',
+    coverImage: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80',
+    category: 'Sports',
+    format: 'PHYSICAL',
+    venue: 'Menengai Crater Viewpoint',
+    city: 'Nakuru',
+    county: 'Nakuru',
+    address: 'Menengai Forest Road, Nakuru',
+    latitude: -0.2012,
+    longitude: 36.0718,
+    ...getRelativeDate(10, 7, 0), // Happening This Month!
+    status: 'PUBLISHED',
+    organizerId: 'org-09',
+    organizerName: 'Rift Valley Athletics Collective',
+    createdAt: new Date().toISOString(),
+    ticketTypes: [
+      {
+        id: 'tt-022',
+        name: 'Runner Entry + Finisher Medal',
+        description: 'Official marathon bib, timing chip, hydration stations, and evening concert pass.',
+        priceKes: 1200,
+        capacity: 1500,
+        available: 720,
+        eventId: 'evt-009',
+      },
+    ],
+  },
+  {
+    id: 'evt-010',
+    title: 'Campus Culture Rave & Freshers Welcome Showcase',
+    slug: 'campus-culture-rave-freshers-welcome-showcase',
+    description:
+      'The biggest inter-university music and creator fest in Nairobi. DJ battles, dance showdowns, photo booths, and student entrepreneur market stalls. 100% Free with university student ID!',
+    coverImage: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+    category: 'Campus',
+    format: 'PHYSICAL',
+    venue: 'UoN Graduation Square Grounds',
+    city: 'Nairobi',
+    county: 'Nairobi',
+    address: 'University Way, Nairobi CBD',
+    latitude: -1.2801,
+    longitude: 36.8163,
+    ...getRelativeDate(0, 14, 0), // Happening TODAY!
+    status: 'PUBLISHED',
+    organizerId: 'org-10',
+    organizerName: 'Student Union Council',
+    createdAt: new Date().toISOString(),
+    ticketTypes: [
+      {
+        id: 'tt-023',
+        name: 'Free Student Pass',
+        description: 'Complimentary entrance with valid university ID or admission letter.',
+        priceKes: 0,
+        capacity: 3000,
+        available: 1820,
+        eventId: 'evt-010',
+      },
+    ],
+  },
+  {
+    id: 'evt-011',
+    title: 'Swahili Street Fashion Runway & Exhibition',
+    slug: 'swahili-street-fashion-runway-exhibition',
+    description:
+      'Celebrating high-end African streetwear, sustainable fabrics, and coastal Swahili haute couture. Meet top East African fashion designers, models, and fashion photographers.',
+    coverImage: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=80',
+    category: 'Fashion',
+    format: 'PHYSICAL',
+    venue: 'Fort Jesus Cultural Amphitheatre',
+    city: 'Mombasa',
+    county: 'Mombasa',
+    address: 'Nkurumah Road, Old Town, Mombasa',
+    latitude: -4.0628,
+    longitude: 39.6792,
+    ...getRelativeDate(9, 18, 0), // Happening This Month!
+    status: 'PUBLISHED',
+    organizerId: 'org-11',
+    organizerName: 'Swahili Arts & Fashion Hub',
+    createdAt: new Date().toISOString(),
+    ticketTypes: [
+      {
+        id: 'tt-024',
+        name: 'Runway Viewing Pass',
+        description: 'Seat along the main catwalk and entrance to exhibition hall.',
+        priceKes: 1500,
+        capacity: 400,
+        available: 130,
+        eventId: 'evt-011',
       },
     ],
   },

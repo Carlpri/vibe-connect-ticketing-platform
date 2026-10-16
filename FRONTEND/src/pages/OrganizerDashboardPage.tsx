@@ -586,23 +586,6 @@ export default function OrganizerDashboardPage() {
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
                       <Button
                         component={Link}
-                        to={`/organizer/events/${event.id}/edit`}
-                        variant="contained"
-                        size="small"
-                        startIcon={<EditIcon />}
-                        sx={{
-                          bgcolor: colors.lime,
-                          color: colors.limeFg,
-                          textTransform: 'none',
-                          fontWeight: 700,
-                          fontSize: '0.8rem',
-                          '&:hover': { bgcolor: colors.limeLt },
-                        }}
-                      >
-                        Edit Details
-                      </Button>
-                      <Button
-                        component={Link}
                         to={`/events/${event.slug || event.id}`}
                         variant="outlined"
                         size="small"
@@ -613,30 +596,48 @@ export default function OrganizerDashboardPage() {
                           textTransform: 'none',
                           fontWeight: 700,
                           fontSize: '0.8rem',
+                          mr: { xs: 0, sm: 'auto' },
                           '&:hover': { borderColor: colors.fg, bgcolor: 'transparent' },
                         }}
                       >
                         View Public Page
                       </Button>
-                      <Tooltip title="Delete Event">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDelete(event.id, event.title)}
-                          disabled={deletingId === event.id}
-                          sx={{
-                            color: colors.coral,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: '8px',
-                            '&:hover': { bgcolor: 'rgba(232, 80, 58, 0.1)' },
-                          }}
-                        >
-                          {deletingId === event.id ? (
-                            <CircularProgress size={16} sx={{ color: colors.coral }} />
-                          ) : (
-                            <DeleteIcon sx={{ fontSize: 18 }} />
-                          )}
-                        </IconButton>
-                      </Tooltip>
+                      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
+                        <Tooltip title="Edit event details">
+                          <IconButton
+                            component={Link}
+                            to={`/organizer/events/${event.id}/edit`}
+                            size="small"
+                            sx={{
+                              color: colors.limeFg,
+                              bgcolor: colors.lime,
+                              borderRadius: '8px',
+                              '&:hover': { bgcolor: colors.limeLt },
+                            }}
+                          >
+                            <EditIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Event">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDelete(event.id, event.title)}
+                            disabled={deletingId === event.id}
+                            sx={{
+                              color: colors.coral,
+                              border: `1px solid ${colors.border}`,
+                              borderRadius: '8px',
+                              '&:hover': { bgcolor: 'rgba(232, 80, 58, 0.1)' },
+                            }}
+                          >
+                            {deletingId === event.id ? (
+                              <CircularProgress size={16} sx={{ color: colors.coral }} />
+                            ) : (
+                              <DeleteIcon sx={{ fontSize: 18 }} />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </Box>
                   </CardContent>
                 </Card>

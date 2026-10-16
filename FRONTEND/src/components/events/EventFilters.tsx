@@ -72,7 +72,7 @@ export default function EventFilters({
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
       {/* 1. Date Dropdown */}
-      <FormControl size="small">
+      <FormControl size="small" sx={{ minWidth: { xs: 'calc(50% - 6px)', sm: 150 }, flex: { xs: '1 1 calc(50% - 6px)', sm: '0 0 auto' } }}>
         <Select
           value={selectedDate}
           onChange={(e) => onDateChange(e.target.value)}
@@ -98,7 +98,7 @@ export default function EventFilters({
       </FormControl>
 
       {/* 2. Location Dropdown */}
-      <FormControl size="small">
+      <FormControl size="small" sx={{ minWidth: { xs: 'calc(50% - 6px)', sm: 150 }, flex: { xs: '1 1 calc(50% - 6px)', sm: '0 0 auto' } }}>
         <Select
           value={selectedLocation}
           onChange={(e) => onLocationChange(e.target.value)}
@@ -124,7 +124,7 @@ export default function EventFilters({
       </FormControl>
 
       {/* 3. Category Dropdown */}
-      <FormControl size="small">
+      <FormControl size="small" sx={{ minWidth: { xs: 'calc(50% - 6px)', sm: 160 }, flex: { xs: '1 1 calc(50% - 6px)', sm: '0 0 auto' } }}>
         <Select
           value={selectedCategory}
           onChange={(e) => onCategoryChange(e.target.value)}
@@ -150,7 +150,7 @@ export default function EventFilters({
       </FormControl>
 
       {/* 4. Price Dropdown */}
-      <FormControl size="small">
+      <FormControl size="small" sx={{ minWidth: { xs: 'calc(50% - 6px)', sm: 160 }, flex: { xs: '1 1 calc(50% - 6px)', sm: '0 0 auto' } }}>
         <Select
           value={selectedPrice}
           onChange={(e) => onPriceChange(e.target.value)}
@@ -188,6 +188,8 @@ export default function EventFilters({
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
             ml: { xs: 0, sm: 'auto' },
+            width: { xs: '100%', sm: 'auto' },
+            justifyContent: { xs: 'center', sm: 'flex-start' },
             '&:hover': { bgcolor: 'rgba(232, 80, 58, 0.08)' },
           }}
         >

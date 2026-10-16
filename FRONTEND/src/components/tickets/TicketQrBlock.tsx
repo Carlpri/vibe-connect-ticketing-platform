@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Box, Typography, Button, CircularProgress } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { colors } from '../../styles/theme';
 
@@ -88,6 +89,27 @@ export default function TicketQrBlock({
         <Typography variant="caption" sx={{ display: 'block', mt: 1, color: colors.lime, fontWeight: 700 }}>
           {lockedMessage || 'Verify email & phone to unlock'}
         </Typography>
+        <Button
+          component={Link}
+          to="/verify-email"
+          size="small"
+          variant="contained"
+          sx={{
+            mt: 1,
+            bgcolor: colors.lime,
+            color: colors.limeFg,
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.03em',
+            py: 0.4,
+            px: 1.5,
+            borderRadius: '4px',
+            '&:hover': { bgcolor: colors.limeLt },
+          }}
+        >
+          Verify Email
+        </Button>
       </Box>
     );
   }
