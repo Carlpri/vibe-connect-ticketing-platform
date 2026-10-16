@@ -40,6 +40,13 @@ export interface RegisterResponse {
   user: User;
   token: string;
   verificationEmailSent: boolean;
+  verificationUrl?: string;
+}
+
+export interface ResendVerificationEmailResponse {
+  sent: boolean;
+  message: string;
+  verificationUrl?: string;
 }
 
 /** POST /api/auth/login — response data */

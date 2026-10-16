@@ -7,6 +7,7 @@ import type {
   MeResponse,
   VerifyEmailInput,
   ResendVerificationEmailInput,
+  ResendVerificationEmailResponse,
   SendPhoneOtpInput,
   VerifyPhoneInput,
   ApiSuccessResponse,
@@ -54,7 +55,7 @@ export const authService = {
 
   async resendVerificationEmail(
     input: ResendVerificationEmailInput
-  ): Promise<ApiSuccessResponse<{ sent: boolean; message: string }>> {
+  ): Promise<ApiSuccessResponse<ResendVerificationEmailResponse>> {
     const { data } = await apiClient.post('/auth/resend-verification-email', input);
     return data;
   },

@@ -110,10 +110,13 @@ export class AuthService {
       role: user.role as UserRole,
     });
 
+    const verificationUrl = EmailService.getVerificationUrl(rawEmailToken);
+
     return {
       user,
       token,
       verificationEmailSent: emailResult.success,
+      verificationUrl: emailResult.isMocked || env.NODE_ENV !== 'production' ? verificationUrl : undefined,
     };
   }
 
@@ -271,9 +274,14 @@ export class AuthService {
       throw new AppError('Failed to send verification email. Please try again later.', 502);
     }
 
+    const verificationUrl = EmailService.getVerificationUrl(rawToken);
+
     return {
       sent: true,
-      message: 'Verification email sent successfully.',
+      message: emailResult.isMocked
+        ? 'Verification link generated.'
+        : 'Verification email sent successfully.',
+      verificationUrl: emailResult.isMocked || env.NODE_ENV !== 'production' ? verificationUrl : undefined,
     };
   }
 

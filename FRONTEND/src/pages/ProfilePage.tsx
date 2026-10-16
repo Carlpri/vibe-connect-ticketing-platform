@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -223,15 +224,32 @@ export default function ProfilePage() {
                   : 'We sent a verification link to your email upon signup.'}
               </Typography>
               {!user.emailVerified && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={handleResendEmail}
-                  disabled={resendingEmail}
-                  sx={{ borderRadius: '8px', fontWeight: 700, borderColor: colors.border, color: colors.fg }}
-                >
-                  {resendingEmail ? 'Sending...' : 'Resend Verification Email'}
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={handleResendEmail}
+                    disabled={resendingEmail}
+                    sx={{
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      bgcolor: colors.lime,
+                      color: colors.limeFg,
+                      '&:hover': { bgcolor: colors.limeLt },
+                    }}
+                  >
+                    {resendingEmail ? 'Sending...' : 'Send Verification Email'}
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/verify-email"
+                    size="small"
+                    variant="outlined"
+                    sx={{ borderRadius: '8px', fontWeight: 700, borderColor: colors.border, color: colors.fg }}
+                  >
+                    Open Verification Hub
+                  </Button>
+                </Box>
               )}
             </Box>
 
