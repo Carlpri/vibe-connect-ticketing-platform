@@ -1,16 +1,14 @@
 /**
  * Event service
  *
- * Checks the backend endpoint (reserved for Phillip).
- * When backend returns empty or placeholder, seamlessly provides
- * the rich mock Kenyan events catalog so the frontend remains fully interactive.
+ * Uses the backend as the source of truth for public and managed event listings.
  */
 import apiClient from './api';
 import type { Event, EventsQuery, ApiSuccessResponse, CreateEventInput, UpdateEventInput } from '../types';
 import { MOCK_EVENTS } from '../data/mockEvents';
 import { readStaleEvents, writeCachedEvents } from '../utils/eventsListCache';
 
-const useMockFallback = import.meta.env.VITE_MOCK_DATA === 'true';
+const useMockFallback = import.meta.env.DEV && import.meta.env.VITE_MOCK_DATA === 'true';
 
 type GetEventsOptions = {
   /** Called immediately when session cache exists (stale-while-revalidate). */
@@ -43,7 +41,7 @@ function filterMockEvents(query?: EventsQuery): Event[] {
 
 async function fetchEventsFromApi(query?: EventsQuery): Promise<ApiSuccessResponse<Event[]> | null> {
   const res = await apiClient.get<ApiSuccessResponse<Event[]>>('/events', { params: query });
-  if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+  if (res.data?.data && Array.isArray(res.data.data)) {
     return res.data;
   }
   return null;
@@ -58,7 +56,7 @@ export const eventService = {
     options?: GetEventsOptions
   ): Promise<ApiSuccessResponse<Event[]>> {
     const listKey = JSON.stringify(query ?? {});
-    const stale = readStaleEvents(query);
+    const stale = import.meta.env.DEV ? readStaleEvents(query) : null;
     if (stale?.length) {
       options?.onStale?.(stale);
     }
@@ -71,10 +69,11 @@ export const eventService = {
     inflightListRequest = (async () => {
       try {
         const fromApi = await fetchEventsFromApi(query);
-        if (fromApi) {
-          writeCachedEvents(query, fromApi.data);
-          return fromApi;
+        if (!fromApi) {
+          throw new Error('The events API returned an invalid response');
         }
+        writeCachedEvents(query, fromApi.data);
+        return fromApi;
       } catch (err) {
         console.warn('Backend /events not yet ready or returning error', err);
         if (stale?.length) {
@@ -84,34 +83,44 @@ export const eventService = {
             message: 'Events loaded from cache',
           };
         }
+        if (useMockFallback) {
+          return {
+            success: true,
+            data: filterMockEvents(query),
+            message: 'Events fetched successfully',
+          };
+        }
+        throw err;
       } finally {
         inflightListRequest = null;
       }
-
-      if (useMockFallback) {
-        return {
-          success: true,
-          data: filterMockEvents(query),
-          message: 'Events fetched successfully',
-        };
-      }
-
-      if (stale?.length) {
-        return {
-          success: true,
-          data: stale,
-          message: 'Events loaded from cache',
-        };
-      }
-
-      return {
-        success: true,
-        data: [],
-        message: 'No events available',
-      };
     })();
 
     return inflightListRequest;
+  },
+
+  async getManagedEvents(period: 'upcoming' | 'past'): Promise<ApiSuccessResponse<Event[]>> {
+    const events: Event[] = [];
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+      const response = await apiClient.get<ApiSuccessResponse<Event[]>>('/events/mine', {
+        params: { period, page, limit: 100 },
+      });
+      if (!Array.isArray(response.data.data)) {
+        throw new Error('Managed events response was invalid');
+      }
+      events.push(...response.data.data);
+      totalPages = Math.max(1, Number(response.headers['x-total-pages']) || 1);
+      page += 1;
+    } while (page <= totalPages);
+
+    return {
+      success: true,
+      data: events,
+      message: 'Managed events retrieved successfully',
+    };
   },
 
   /**

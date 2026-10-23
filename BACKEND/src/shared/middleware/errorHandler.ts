@@ -185,7 +185,7 @@ export const errorHandler = (
         path,
         statusCode: err.statusCode,
       });
-      sendError(res, 'An unexpected internal server error occurred', 500);
+      sendError(res, 'An unexpected internal server error occurred', err.statusCode);
     } else {
       logger.warn(err.message, {
         category: 'OPERATIONAL_ERROR',

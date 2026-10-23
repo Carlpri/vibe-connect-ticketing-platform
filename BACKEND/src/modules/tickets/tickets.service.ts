@@ -179,7 +179,7 @@ export class TicketsService {
 
     const scanner = await prisma.user.findUnique({
       where: { id: scannedByUserId },
-      select: { role: true },
+      select: { role: true, organizerApplicationStatus: true },
     });
 
     if (!scanner) {
@@ -188,9 +188,11 @@ export class TicketsService {
 
     if (
       scanner.role !== 'ADMIN' &&
-      ticket.event.organizerId !== scannedByUserId
+      (scanner.role !== 'ORGANIZER' ||
+        scanner.organizerApplicationStatus !== 'APPROVED' ||
+        ticket.event.organizerId !== scannedByUserId)
     ) {
-      throw new AppError('Forbidden: you can only scan tickets for your own events', 403);
+      throw new AppError('Forbidden: approved organizers can only scan tickets for their own events', 403);
     }
 
     if (ticket.status === TicketStatus.VOID) {
@@ -210,23 +212,52 @@ export class TicketsService {
       };
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id: ticket.id },
+    const checkedInAt = new Date();
+    const checkIn = await prisma.ticket.updateMany({
+      where: {
+        id: ticket.id,
+        status: TicketStatus.ISSUED,
+        order: { is: { status: 'PAID' } },
+      },
       data: {
         status: TicketStatus.CHECKED_IN,
-        checkedInAt: new Date(),
+        checkedInAt,
         checkedInById: scannedByUserId,
       },
     });
 
+    if (checkIn.count === 0) {
+      const current = await prisma.ticket.findUnique({
+        where: { id: ticket.id },
+        select: { status: true, checkedInAt: true },
+      });
+
+      if (current?.status === TicketStatus.CHECKED_IN) {
+        return {
+          valid: true,
+          alreadyCheckedIn: true,
+          ticketId: ticket.id,
+          event: ticket.event,
+          ticketType: ticket.ticketType,
+          attendee: ticket.user,
+          checkedInAt: current.checkedInAt,
+          message: 'Ticket already scanned — attendee was previously admitted.',
+        };
+      }
+      if (current?.status === TicketStatus.VOID) {
+        throw new AppError('Ticket has been voided', 400);
+      }
+      throw new AppError('Ticket is no longer valid for check-in', 400);
+    }
+
     return {
       valid: true,
       alreadyCheckedIn: false,
-      ticketId: updated.id,
+      ticketId: ticket.id,
       event: ticket.event,
       ticketType: ticket.ticketType,
       attendee: ticket.user,
-      checkedInAt: updated.checkedInAt,
+      checkedInAt,
       message: 'Ticket validated successfully! Attendee admitted.',
     };
   }

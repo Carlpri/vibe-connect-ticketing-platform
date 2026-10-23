@@ -15,6 +15,8 @@ import {
   Alert,
   TextField,
   Paper,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -35,6 +37,8 @@ import { colors } from '../styles/theme';
 import { eventCoverUrl } from '../utils/eventMedia';
 import { formatEventDate, formatKes } from '../utils/format';
 import { ticketService } from '../services/ticketService';
+import { authService } from '../services/authService';
+import type { OrganizerApplication } from '../types';
 
 export default function OrganizerDashboardPage() {
   const { user } = useAuth();
@@ -45,22 +49,18 @@ export default function OrganizerDashboardPage() {
   const [scanInput, setScanInput] = useState('');
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [eventPeriod, setEventPeriod] = useState<'upcoming' | 'past'>('upcoming');
+  const [organizerApplications, setOrganizerApplications] = useState<OrganizerApplication[]>([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [applicationsError, setApplicationsError] = useState<string | null>(null);
+  const [reviewingApplicationId, setReviewingApplicationId] = useState<string | null>(null);
 
-  const fetchOrganizerEvents = async () => {
+  const fetchOrganizerEvents = async (period: 'upcoming' | 'past') => {
     setLoading(true);
     setError(null);
     try {
-      const res = await eventService.getEvents();
-      if (res.data) {
-        // Filter events belonging to this organizer (by ID or organizer name)
-        const myEvents = res.data.filter(
-          (e) =>
-            (user?.id && e.organizerId === user.id) ||
-            (user?.name && e.organizerName?.toLowerCase() === user.name.toLowerCase())
-        );
-        // If no events match this specific organizer yet, show all events with a clear label or myEvents
-        setEvents(myEvents.length > 0 ? myEvents : res.data);
-      }
+      const res = await eventService.getManagedEvents(period);
+      setEvents(res.data);
     } catch (err: any) {
       setError(err?.message || 'Failed to load events');
     } finally {
@@ -69,8 +69,52 @@ export default function OrganizerDashboardPage() {
   };
 
   useEffect(() => {
-    fetchOrganizerEvents();
-  }, [user]);
+    fetchOrganizerEvents(eventPeriod);
+  }, [user?.id, eventPeriod]);
+
+  useEffect(() => {
+    if (user?.role !== 'ADMIN') {
+      setOrganizerApplications([]);
+      return;
+    }
+
+    let cancelled = false;
+    setApplicationsLoading(true);
+    setApplicationsError(null);
+    authService.getOrganizerApplications()
+      .then((response) => {
+        if (!cancelled) setOrganizerApplications(response.data);
+      })
+      .catch((error: any) => {
+        if (!cancelled) {
+          setApplicationsError(error?.response?.data?.message || 'Could not load organizer applications.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setApplicationsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.role]);
+
+  const reviewOrganizerApplication = async (application: OrganizerApplication, decision: 'approve' | 'reject') => {
+    setReviewingApplicationId(application.id);
+    try {
+      if (decision === 'approve') {
+        await authService.approveOrganizerApplication(application.id);
+      } else {
+        await authService.rejectOrganizerApplication(application.id);
+      }
+      setOrganizerApplications((current) => current.filter((item) => item.id !== application.id));
+      toast.success(`Organizer request ${decision === 'approve' ? 'approved' : 'rejected'}.`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || `Could not ${decision} organizer request.`);
+    } finally {
+      setReviewingApplicationId(null);
+    }
+  };
 
   const handleGateScan = async () => {
     const code = scanInput.trim();
@@ -137,6 +181,70 @@ export default function OrganizerDashboardPage() {
   return (
     <Box sx={{ minHeight: '90vh', bgcolor: colors.bg, py: { xs: 4, md: 6 } }}>
       <Container maxWidth="lg">
+        {user?.role === 'ORGANIZER' && user.organizerApplicationStatus !== 'APPROVED' && (
+          <Alert severity={user.organizerApplicationStatus === 'REJECTED' ? 'warning' : 'info'} sx={{ mb: 3 }}>
+            {user.organizerApplicationStatus === 'REJECTED'
+              ? 'Your organizer request was not approved. You may prepare drafts, but cannot publish events.'
+              : 'Your organizer request is awaiting admin approval. You may prepare drafts, but cannot publish events yet.'}
+          </Alert>
+        )}
+
+        {user?.role === 'ADMIN' && (
+          <Card sx={{ p: 3, mb: 4, border: `1px solid ${colors.border}`, borderRadius: '12px' }}>
+            <Typography variant="h5" sx={{ fontWeight: 800, color: colors.fg, mb: 2 }}>
+              Organizer approval requests
+            </Typography>
+            {applicationsError && <Alert severity="error" sx={{ mb: 2 }}>{applicationsError}</Alert>}
+            {applicationsLoading ? (
+              <CircularProgress size={24} />
+            ) : organizerApplications.length === 0 ? (
+              <Typography color="text.secondary">There are no pending organizer requests.</Typography>
+            ) : (
+              <Box sx={{ display: 'grid', gap: 1.5 }}>
+                {organizerApplications.map((application) => (
+                  <Box
+                    key={application.id}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      justifyContent: 'space-between',
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                      gap: 2,
+                      p: 2,
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <Box>
+                      <Typography sx={{ fontWeight: 800, color: colors.fg }}>{application.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">{application.email}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Requested {new Date(application.createdAt).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="contained"
+                        disabled={reviewingApplicationId === application.id}
+                        onClick={() => reviewOrganizerApplication(application, 'approve')}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        color="inherit"
+                        disabled={reviewingApplicationId === application.id}
+                        onClick={() => reviewOrganizerApplication(application, 'reject')}
+                      >
+                        Reject
+                      </Button>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Card>
+        )}
+
         {/* Top Header */}
         <Box
           sx={{
@@ -163,7 +271,7 @@ export default function OrganizerDashboardPage() {
                 Organizer Dashboard
               </Typography>
               <Chip
-                label="ORGANIZER"
+                label={user?.role === 'ADMIN' ? 'ADMIN' : 'ORGANIZER'}
                 size="small"
                 sx={{
                   bgcolor: colors.lime,
@@ -226,7 +334,7 @@ export default function OrganizerDashboardPage() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box>
                 <Typography variant="caption" sx={{ color: colors.mutedFg, fontWeight: 700, textTransform: 'uppercase' }}>
-                  Total Events
+                  {eventPeriod === 'past' ? 'Past Events' : 'Upcoming Events'}
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: colors.fg, mt: 0.5 }}>
                   {totalEvents}
@@ -403,16 +511,30 @@ export default function OrganizerDashboardPage() {
               color: colors.fg,
             }}
           >
-            Your Published Events ({events.length})
+            {eventPeriod === 'past'
+              ? user?.role === 'ADMIN' ? 'Platform Past Events' : 'Your Past Events'
+              : user?.role === 'ADMIN' ? 'Platform Upcoming Events' : 'Your Upcoming Events'} ({events.length})
           </Typography>
           <Button
             size="small"
-            onClick={fetchOrganizerEvents}
+            onClick={() => fetchOrganizerEvents(eventPeriod)}
             sx={{ color: colors.mutedFg, textTransform: 'none', fontWeight: 600 }}
           >
             Refresh
           </Button>
         </Box>
+
+        <Tabs
+          value={eventPeriod}
+          onChange={(_event, value: string) => {
+            if (value === 'upcoming' || value === 'past') setEventPeriod(value);
+          }}
+          sx={{ mb: 3 }}
+          aria-label="Organizer event history"
+        >
+          <Tab value="upcoming" label="Upcoming Events" />
+          <Tab value="past" label={user?.role === 'ADMIN' ? 'Past Events' : 'Your Past Events'} />
+        </Tabs>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -439,7 +561,9 @@ export default function OrganizerDashboardPage() {
               No Events Found
             </Typography>
             <Typography variant="body2" sx={{ color: colors.mutedFg, mb: 3, maxWidth: 450, mx: 'auto' }}>
-              You haven't published any events yet. Create your first event now and start selling digital tickets.
+              {eventPeriod === 'past'
+                ? 'Events that have ended will remain available here for historical reference.'
+                : "You don't have any upcoming events yet. Create an event to start managing ticket sales."}
             </Typography>
             <Button
               component={Link}
@@ -600,7 +724,7 @@ export default function OrganizerDashboardPage() {
                           '&:hover': { borderColor: colors.fg, bgcolor: 'transparent' },
                         }}
                       >
-                        View Public Page
+                        {eventPeriod === 'past' ? 'View Event Details' : 'View Public Page'}
                       </Button>
                       <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
                         <Tooltip title="Edit event details">

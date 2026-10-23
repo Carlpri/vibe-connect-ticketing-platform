@@ -6,6 +6,7 @@ import {
   createEventSchema,
   updateEventSchema,
   listEventsQuerySchema,
+  managedEventsQuerySchema,
   eventIdParamSchema,
 } from './events.schemas';
 
@@ -32,6 +33,15 @@ router.post(
   requireRole('ORGANIZER', 'ADMIN'),
   validateBody(createEventSchema),
   EventsController.createEvent
+);
+
+// Organizer-owned events and administrator-wide event management.
+router.get(
+  '/mine',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  validateQuery(managedEventsQuerySchema),
+  EventsController.listManagedEvents
 );
 
 // List events (Public discovery)

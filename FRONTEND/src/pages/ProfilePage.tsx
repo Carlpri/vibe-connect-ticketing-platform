@@ -109,7 +109,7 @@ export default function ProfilePage() {
             icon={<CheckCircleIcon />}
             sx={{ mb: 4, borderRadius: '8px', bgcolor: 'rgba(43, 184, 90, 0.1)', color: colors.success, border: `1px solid ${colors.success}` }}
           >
-            Your account is fully verified! You have full access to instant M-Pesa checkouts and event creation.
+            Your account is fully verified. You can create events and make ticket reservations; payment processing is not yet configured.
           </Alert>
         ) : (
           <Alert
@@ -273,7 +273,7 @@ export default function ProfilePage() {
               </Box>
               <Typography variant="body2" sx={{ color: colors.mutedFg, fontSize: '0.82rem', mb: 1.5 }}>
                 {user.phoneVerified
-                  ? 'Phone is verified for instant M-Pesa STK transactions.'
+                  ? 'Phone is verified for account security and ticket contact information.'
                   : 'Confirm your phone with a 6-digit SMS code.'}
               </Typography>
 

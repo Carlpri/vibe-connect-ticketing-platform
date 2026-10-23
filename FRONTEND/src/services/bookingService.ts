@@ -7,12 +7,10 @@
  * - POST /api/orders (requires authenticate + requireFullyVerified)
  * - GET  /api/orders/my (requires authenticate)
  * - GET  /api/orders/:id (requires authenticate)
- * - POST /api/orders/:id/pay (requires authenticate)
- * - POST /api/orders/:id/confirm-payment (requires authenticate)
- * - POST /api/orders/checkin (requires authenticate)
+ * Payment endpoints remain unavailable until a provider integration is configured.
  */
 import apiClient from './api';
-import type { Order, CreateOrderInput, InitiatePaymentInput, ApiSuccessResponse } from '../types';
+import type { Order, CreateOrderInput, ApiSuccessResponse } from '../types';
 
 export const bookingService = {
   /**
@@ -42,27 +40,17 @@ export const bookingService = {
     return data;
   },
 
-  /**
-   * POST /api/orders/:id/pay
-   * Requires: authenticate middleware
-   * Initiates M-Pesa STK push to customer's phone.
-   */
   async initiatePayment(
     orderId: string,
-    input: InitiatePaymentInput
-  ): Promise<ApiSuccessResponse<{ checkoutRequestId: string; paymentId: string; amountKes: number }>> {
-    const { data } = await apiClient.post(`/orders/${orderId}/pay`, input);
-    return data;
-  },
-
-  /**
-   * POST /api/orders/:id/confirm-payment
-   * Confirms payment and issues digital ticket
-   */
-  async confirmPayment(orderId: string, mpesaReceiptNumber?: string): Promise<ApiSuccessResponse<Order>> {
-    const { data } = await apiClient.post<ApiSuccessResponse<Order>>(`/orders/${orderId}/confirm-payment`, {
-      mpesaReceiptNumber,
-    });
+    input: { phoneNumber: string }
+  ): Promise<ApiSuccessResponse<{
+    checkoutRequestId: string | null;
+    paymentId: string;
+    amountKes: number;
+    status: string;
+    message: string;
+  }>> {
+    const { data } = await apiClient.post('/orders/' + orderId + '/pay', input);
     return data;
   },
 

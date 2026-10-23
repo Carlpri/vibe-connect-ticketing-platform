@@ -2,7 +2,7 @@
 
 **Kenyan Event Discovery & Digital Ticketing Platform**
 
-> Connecting people to live events across Kenya — from concerts and festivals to community gatherings, powered by M-Pesa payments and secure digital ticketing.
+> Connecting people to live events across Kenya — from concerts and festivals to community gatherings, with event discovery and secure digital ticketing.
 
 ---
 
@@ -54,7 +54,7 @@ VIBE-CONNECT/
 | **Database & ORM** | PostgreSQL (hosted on Supabase) with Prisma ORM |
 | **Authentication** | JWT, bcryptjs |
 | **Validation** | Zod schemas |
-| **Payments** | M-Pesa STK Push / Lipa Na M-Pesa Simulation & Integration |
+| **Payments** | Safaricom Daraja OAuth, STK Push, callback matching, and STK Query verification |
 
 ---
 
@@ -73,8 +73,10 @@ npm run install:frontend
 
 ### 2. Environment Setup
 
-- **Backend**: Configure `BACKEND/.env` with your `DATABASE_URL`, `JWT_SECRET`, and `PORT=3000`.
-- **Frontend**: Configure `FRONTEND/.env` with `VITE_API_URL=http://localhost:3000/api/v1`.
+- **Backend**: Configure `BACKEND/.env` with `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, and `PORT=3000`. Use a strong, randomly generated `JWT_SECRET` of at least 32 characters; production startup fails without it.
+- **Frontend**: Configure `FRONTEND/.env` with `VITE_API_URL=http://localhost:3000` (the API client adds `/api`).
+
+Configure Daraja Sandbox using [the M-Pesa setup guide](docs/MPESA_DARAJA_SETUP.md). Daraja credentials and the public HTTPS callback URL must be configured as backend-only values in `BACKEND/.env` or Render secrets. No payment is initiated until those settings are present. Card and alternative mobile-money methods are not integrated. Organizer applicants can prepare drafts, but admins must approve them before event publishing. Set the Render `JWT_SECRET` manually; it is intentionally not stored in this repository.
 
 ### 3. Run Applications in Development
 

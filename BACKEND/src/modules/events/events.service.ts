@@ -1,7 +1,7 @@
 import { prisma } from '../../shared/utils/prisma';
 import { AppError } from '../../shared/errors/AppError';
 import { CreateEventInput, UpdateEventInput, ListEventsQuery } from './events.schemas';
-import { TokenPayload } from '../../shared/types';
+import { TokenPayload, UserRole } from '../../shared/types';
 import { Prisma } from '@prisma/client';
 
 /**
@@ -22,6 +22,43 @@ function formatEventForClient(event: any) {
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function publicUpcomingEventFilter(now: Date): Prisma.EventWhereInput {
+  return {
+    status: 'PUBLISHED',
+    endsAt: { gt: now },
+  };
+}
+
+export function managedEventFilter(
+  user: Pick<TokenPayload, 'userId' | 'role'>,
+  period: 'all' | 'upcoming' | 'past',
+  now: Date
+): Prisma.EventWhereInput {
+  const where: Prisma.EventWhereInput = {};
+
+  if (user.role !== 'ADMIN') {
+    where.organizerId = user.userId;
+  }
+
+  if (period === 'upcoming') {
+    where.endsAt = { gt: now };
+  } else if (period === 'past') {
+    where.endsAt = { lte: now };
+  }
+
+  return where;
+}
+
+export function assertOrganizerMayPublish(
+  role: UserRole,
+  applicationStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED',
+  eventStatus: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED'
+): void {
+  if (eventStatus === 'PUBLISHED' && role !== 'ADMIN' && applicationStatus !== 'APPROVED') {
+    throw new AppError('Admin approval is required before publishing events', 403);
+  }
+}
 
 function slugify(text: string): string {
   return text
@@ -56,7 +93,18 @@ export class EventsService {
   /**
    * Create a new event with ticket types in an atomic transaction.
    */
-  static async createEvent(organizerId: string, input: CreateEventInput) {
+  static async createEvent(user: TokenPayload, input: CreateEventInput) {
+    const organizer = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { role: true, organizerApplicationStatus: true },
+    });
+    if (!organizer) throw new AppError('Organizer account not found', 404);
+    if (organizer.role !== user.role) {
+      throw new AppError('Account permissions changed. Please sign in again.', 403);
+    }
+    assertOrganizerMayPublish(organizer.role, organizer.organizerApplicationStatus, input.status);
+
+    const organizerId = user.userId;
     const slug = await this.generateUniqueSlug(input.title, input.slug);
 
     const event = await prisma.event.create({
@@ -112,20 +160,12 @@ export class EventsService {
    * List events with filtering, search, and pagination.
    * Public visitors receive only PUBLISHED events.
    */
-  static async listEvents(query: ListEventsQuery, user?: TokenPayload) {
+  static async listEvents(query: ListEventsQuery) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.EventWhereInput = {};
-
-    // Authorization rule: unauthenticated or attendees ONLY see PUBLISHED events
-    const isOrganizerOrAdmin = user && (user.role === 'ORGANIZER' || user.role === 'ADMIN');
-    if (isOrganizerOrAdmin && query.status) {
-      where.status = query.status;
-    } else {
-      where.status = 'PUBLISHED';
-    }
+    const where = publicUpcomingEventFilter(new Date());
 
     if (query.category && query.category !== 'All') {
       where.category = { equals: query.category, mode: 'insensitive' };
@@ -165,6 +205,50 @@ export class EventsService {
               id: true,
               name: true,
             },
+          },
+        },
+      }),
+      prisma.event.count({ where }),
+    ]);
+
+    return {
+      events: events.map(formatEventForClient),
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  /**
+   * List events for an authenticated organizer or administrator.
+   * Organizers are always scoped to their own events; administrators may see all.
+   */
+  static async listManagedEvents(query: ListEventsQuery & { period: 'all' | 'upcoming' | 'past' }, user: TokenPayload) {
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+    const where = managedEventFilter(user, query.period, now);
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    const [events, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ endsAt: query.period === 'past' ? 'desc' : 'asc' }, { startsAt: 'asc' }],
+        include: {
+          ticketTypes: {
+            orderBy: { priceKes: 'asc' },
+          },
+          organizer: {
+            select: { id: true, name: true },
           },
         },
       }),
@@ -236,6 +320,21 @@ export class EventsService {
 
     if (user.role !== 'ADMIN' && existing.organizerId !== user.userId) {
       throw new AppError('Forbidden: You do not have permission to update this event', 403);
+    }
+    if (user.role !== 'ADMIN') {
+      const organizer = await prisma.user.findUnique({
+        where: { id: user.userId },
+        select: { role: true, organizerApplicationStatus: true },
+      });
+      if (!organizer) throw new AppError('Organizer account not found', 404);
+      if (organizer.role !== user.role) {
+        throw new AppError('Account permissions changed. Please sign in again.', 403);
+      }
+      assertOrganizerMayPublish(
+        organizer.role,
+        organizer.organizerApplicationStatus,
+        input.status ?? existing.status
+      );
     }
 
     // Validate dates if updated

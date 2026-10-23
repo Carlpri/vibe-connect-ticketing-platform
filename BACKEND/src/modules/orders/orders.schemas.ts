@@ -12,22 +12,23 @@ export const normalizeKenyanPhone = (val: string): string => {
   return `254${match[1]}`;
 };
 
-const ensureUuid = (val: string): string => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (uuidRegex.test(val)) return val;
-  const hex = Buffer.from(val).toString('hex').padStart(32, '0').slice(-32);
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-};
-
 export const createOrderItemSchema = z.object({
-  ticketTypeId: z.string().transform(ensureUuid),
+  ticketTypeId: z.string().uuid('Invalid ticket type ID'),
   quantity: z.number().int().positive('Quantity must be at least 1'),
-  unitPriceKes: z.number().int().nonnegative('Unit price cannot be negative').default(0),
 });
 
 export const createOrderSchema = z.object({
-  eventId: z.string().transform(ensureUuid),
+  eventId: z.string().uuid('Invalid event ID'),
   items: z.array(createOrderItemSchema).min(1, 'Order must contain at least one item'),
+}).superRefine((order, context) => {
+  const ticketTypeIds = order.items.map((item) => item.ticketTypeId);
+  if (new Set(ticketTypeIds).size !== ticketTypeIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['items'],
+      message: 'Each ticket type may only appear once in an order',
+    });
+  }
 });
 
 export const orderIdParamSchema = z.object({
@@ -41,10 +42,24 @@ export const initiatePaymentSchema = z.object({
     .transform(normalizeKenyanPhone),
 });
 
-export const confirmPaymentSchema = z.object({
-  checkoutRequestId: z.string().optional(),
-  mpesaReceiptNumber: z.string().optional(),
-});
+const callbackMetadataSchema = z.object({
+  Item: z.array(z.object({
+    Name: z.string(),
+    Value: z.union([z.string(), z.number()]).optional(),
+  }).passthrough()),
+}).passthrough().optional();
+
+export const mpesaCallbackSchema = z.object({
+  Body: z.object({
+    stkCallback: z.object({
+      MerchantRequestID: z.string().min(1),
+      CheckoutRequestID: z.string().min(1),
+      ResultCode: z.number().int(),
+      ResultDesc: z.string(),
+      CallbackMetadata: callbackMetadataSchema,
+    }).passthrough(),
+  }).passthrough(),
+}).passthrough();
 
 export const checkinTicketSchema = z.object({
   qrCode: z.string().min(5, 'QR Code is required'),
@@ -52,5 +67,5 @@ export const checkinTicketSchema = z.object({
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;
-export type ConfirmPaymentInput = z.infer<typeof confirmPaymentSchema>;
+export type MpesaCallbackInput = z.infer<typeof mpesaCallbackSchema>;
 export type CheckinTicketInput = z.infer<typeof checkinTicketSchema>;

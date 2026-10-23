@@ -15,6 +15,15 @@ const envSchema = z.object({
   // Application & Frontend URLs
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
+  // Safaricom Daraja M-Pesa Express
+  MPESA_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  MPESA_CONSUMER_KEY: z.string().optional(),
+  MPESA_CONSUMER_SECRET: z.string().optional(),
+  MPESA_SHORTCODE: z.string().optional(),
+  MPESA_PASSKEY: z.string().optional(),
+  MPESA_CALLBACK_URL: z.string().url().optional(),
+  MPESA_TRANSACTION_TYPE: z.enum(['CustomerPayBillOnline', 'CustomerBuyGoodsOnline']).default('CustomerPayBillOnline'),
+
   // Email Provider (Resend)
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('VIBE-CONNECT <onboarding@resend.dev>'),
@@ -40,6 +49,16 @@ if (!parsed.success) {
   console.warn(parsed.error.flatten().fieldErrors);
 }
 
+const configuredJwtSecret = process.env.JWT_SECRET?.trim();
+if (
+  process.env.NODE_ENV === 'production' &&
+  (!configuredJwtSecret ||
+    configuredJwtSecret.length < 32 ||
+    configuredJwtSecret === 'vibe-connect-default-secret-key-change-in-production')
+) {
+  throw new Error('A strong JWT_SECRET of at least 32 characters is required in production');
+}
+
 const raw = parsed.success ? parsed.data : (process.env as any);
 
 const atApiKey = raw.AT_API_KEY || raw.AFRICASTALKING_API_KEY;
@@ -51,10 +70,17 @@ export const env = {
   PORT: Number(raw.PORT) || 3000,
   DATABASE_URL: raw.DATABASE_URL || '',
   DIRECT_URL: raw.DIRECT_URL || '',
-  JWT_SECRET: raw.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
+  JWT_SECRET: configuredJwtSecret || 'vibe-connect-default-secret-key-change-in-production',
   JWT_EXPIRES_IN: raw.JWT_EXPIRES_IN || '7d',
   TICKET_QR_SECRET: raw.TICKET_QR_SECRET || raw.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
   FRONTEND_URL: raw.FRONTEND_URL || 'http://localhost:5173',
+  MPESA_ENV: raw.MPESA_ENV || 'sandbox',
+  MPESA_CONSUMER_KEY: raw.MPESA_CONSUMER_KEY || '',
+  MPESA_CONSUMER_SECRET: raw.MPESA_CONSUMER_SECRET || '',
+  MPESA_SHORTCODE: raw.MPESA_SHORTCODE || '',
+  MPESA_PASSKEY: raw.MPESA_PASSKEY || '',
+  MPESA_CALLBACK_URL: raw.MPESA_CALLBACK_URL || '',
+  MPESA_TRANSACTION_TYPE: raw.MPESA_TRANSACTION_TYPE || 'CustomerPayBillOnline',
 
   // Email Provider (Resend)
   RESEND_API_KEY: raw.RESEND_API_KEY,

@@ -650,7 +650,7 @@ export default function EventDetailPage() {
                 IMPORTANT ATTENDEE NOTICE
               </Typography>
               <Typography variant="body2" sx={{ color: colors.fg, fontSize: '0.88rem', lineHeight: 1.6 }}>
-                • Instant M-Pesa STK push generates your digital QR ticket immediately upon payment.<br />
+                • Ticket reservations remain unpaid until a configured payment provider verifies the transaction.<br />
                 • Digital tickets with live QR code are stored in your account under <strong>My Tickets</strong>.<br />
                 • Fast gate check-in powered by real-time scanner verification.
               </Typography>

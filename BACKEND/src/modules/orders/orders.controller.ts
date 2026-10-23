@@ -1,7 +1,9 @@
-import { Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express';
 import { OrdersService } from './orders.service';
 import { sendSuccess } from '../../shared/utils/apiResponse';
 import { AuthenticatedRequest } from '../../shared/types';
+import { mpesaCallbackSchema } from './orders.schemas';
+import { AppError } from '../../shared/errors/AppError';
 
 export class OrdersController {
   /**
@@ -52,9 +54,26 @@ export class OrdersController {
       const result = await OrdersService.initiatePayment(
         req.params.id as string,
         req.user!.userId,
-        req.body.phoneNumber
+        req.body
       );
-      sendSuccess(res, result, result.message, 200);
+      sendSuccess(res, result, result.message, 202);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/payments/mpesa/callback
+   * Daraja webhook; payment is only finalized after provider status verification.
+   */
+  static async mpesaCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const parsed = mpesaCallbackSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new AppError('Invalid M-Pesa callback payload', 400);
+      }
+      await OrdersService.processMpesaCallback(parsed.data);
+      res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' });
     } catch (error) {
       next(error);
     }
@@ -66,12 +85,7 @@ export class OrdersController {
    */
   static async confirmPayment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const order = await OrdersService.confirmPayment(
-        req.params.id as string,
-        req.user!.userId,
-        req.body?.mpesaReceiptNumber
-      );
-      sendSuccess(res, order, 'Payment confirmed and tickets issued successfully', 200);
+      await OrdersService.confirmPayment();
     } catch (error) {
       next(error);
     }

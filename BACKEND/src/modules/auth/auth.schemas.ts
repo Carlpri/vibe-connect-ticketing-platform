@@ -54,6 +54,10 @@ export const verifyPhoneSchema = z.object({
     .regex(/^\d{6}$/, 'Verification code must be a 6-digit numeric OTP'),
 });
 
+export const userIdParamSchema = z.object({
+  userId: z.string().uuid(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;

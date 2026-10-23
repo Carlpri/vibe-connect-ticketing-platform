@@ -26,6 +26,7 @@ import { eventService } from '../services/eventService';
 import type { CreateEventInput, CreateTicketTypeInput, EventFormat, EventStatus, UpdateEventInput } from '../types';
 import { colors } from '../styles/theme';
 import { getApiErrorMessage } from '../utils/format';
+import { useAuth } from '../contexts/AuthContext';
 
 const CATEGORIES = [
   'Music',
@@ -81,7 +82,9 @@ const VENUE_PRESETS = [
 export default function CreateEventPage() {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
+  const { user } = useAuth();
   const isEditMode = Boolean(eventId);
+  const canPublish = user?.role === 'ADMIN' || user?.organizerApplicationStatus === 'APPROVED';
   const [submitting, setSubmitting] = useState(false);
   const [loadingEvent, setLoadingEvent] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +94,7 @@ export default function CreateEventPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Music');
   const [format, setFormat] = useState<EventFormat>('PHYSICAL');
-  const [status, setStatus] = useState<EventStatus>('PUBLISHED');
+  const [status, setStatus] = useState<EventStatus>(canPublish ? 'PUBLISHED' : 'DRAFT');
   const [coverImage, setCoverImage] = useState('');
 
   // Default dates: starts tomorrow at 6 PM, ends at 11 PM
@@ -334,6 +337,13 @@ export default function CreateEventPage() {
   return (
     <Box sx={{ minHeight: '90vh', bgcolor: colors.bg, py: { xs: 4, md: 6 } }}>
       <Container maxWidth="md">
+        {!canPublish && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            {user?.organizerApplicationStatus === 'REJECTED'
+              ? 'Your organizer request was not approved. You can prepare and save drafts, but cannot publish events.'
+              : 'Your organizer request is awaiting admin approval. You can prepare and save this event as a draft; publishing will be available after approval.'}
+          </Alert>
+        )}
         {/* Back Link */}
         <Button
           component={Link}
@@ -452,7 +462,7 @@ export default function CreateEventPage() {
                       label="Status"
                       onChange={(e) => setStatus(e.target.value as EventStatus)}
                     >
-                      <MenuItem value="PUBLISHED">Published</MenuItem>
+                      <MenuItem value="PUBLISHED" disabled={!canPublish}>Published</MenuItem>
                       <MenuItem value="DRAFT">Draft</MenuItem>
                     </Select>
                   </FormControl>
@@ -890,10 +900,14 @@ export default function CreateEventPage() {
                 {submitting
                   ? isEditMode
                     ? 'Saving Changes...'
-                    : 'Publishing Event...'
+                    : canPublish
+                      ? 'Publishing Event...'
+                      : 'Saving Draft...'
                   : isEditMode
                     ? 'Save Changes'
-                    : 'Publish Event Live'}
+                    : canPublish
+                      ? 'Publish Event Live'
+                      : 'Save Event Draft'}
               </Button>
             </Box>
           </Box>

@@ -4,6 +4,7 @@ import { EventsService } from './events.service';
 import { sendSuccess } from '../../shared/utils/apiResponse';
 import { AuthenticatedRequest, TokenPayload } from '../../shared/types';
 import { env } from '../../config/env';
+import { managedEventsQuerySchema } from './events.schemas';
 
 /**
  * Extracts authenticated user if token is present, but doesn't block unauthenticated callers.
@@ -31,8 +32,7 @@ export class EventsController {
    */
   static async createEvent(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const organizerId = req.user!.userId;
-      const event = await EventsService.createEvent(organizerId, req.body);
+      const event = await EventsService.createEvent(req.user!, req.body);
       sendSuccess(res, event, 'Event created successfully', 201);
     } catch (error) {
       next(error);
@@ -45,8 +45,7 @@ export class EventsController {
    */
   static async listEvents(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const user = tryExtractUser(req);
-      const result = await EventsService.listEvents(req.query as any, user);
+      const result = await EventsService.listEvents(req.query as any);
       
       res.setHeader('X-Total-Count', result.pagination.total.toString());
       res.setHeader('X-Page', result.pagination.page.toString());
@@ -54,6 +53,26 @@ export class EventsController {
       res.setHeader('X-Total-Pages', result.pagination.totalPages.toString());
 
       sendSuccess(res, result.events, 'Events retrieved successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/events/mine
+   * Requires an organizer or administrator; organizers are owner-scoped by the service.
+   */
+  static async listManagedEvents(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const query = managedEventsQuerySchema.parse(req.query);
+      const result = await EventsService.listManagedEvents(query, req.user!);
+
+      res.setHeader('X-Total-Count', result.pagination.total.toString());
+      res.setHeader('X-Page', result.pagination.page.toString());
+      res.setHeader('X-Limit', result.pagination.limit.toString());
+      res.setHeader('X-Total-Pages', result.pagination.totalPages.toString());
+
+      sendSuccess(res, result.events, 'Managed events retrieved successfully', 200);
     } catch (error) {
       next(error);
     }

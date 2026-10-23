@@ -62,7 +62,11 @@ export default function RegisterPage() {
         password,
         role,
       });
-      toast.success('Account created! Please check your email to verify.');
+      toast.success(
+        role === 'ORGANIZER'
+          ? 'Account created. Your organizer request is pending admin approval.'
+          : 'Account created! Please check your email to verify.'
+      );
       if (role === 'ORGANIZER') {
         navigate('/organizer', { replace: true });
       } else {

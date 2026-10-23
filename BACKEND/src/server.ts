@@ -10,6 +10,7 @@ import authRoutes from './modules/auth/auth.routes';
 import eventsRoutes from './modules/events/events.routes';
 import ordersRoutes from './modules/orders/orders.routes';
 import ticketsRoutes from './modules/tickets/tickets.routes';
+import paymentsRoutes from './modules/orders/payments.routes';
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/tickets', ticketsRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 // 404 Route Handler
 app.use((req, res) => {

@@ -266,6 +266,29 @@ describe('VIBE-CONNECT Error Handling & Security Audit Tests', () => {
     }
   });
 
+  it('preserves safe 501 status for unavailable integrations without exposing internal errors', async () => {
+    const testApp = express();
+    testApp.get('/test/unavailable', () => {
+      throw new AppError('Provider credentials are missing', 501);
+    });
+    testApp.use(errorHandler);
+
+    const testServer = testApp.listen(0);
+    const port = (testServer.address() as { port: number }).port;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/test/unavailable`);
+      const body = (await res.json()) as any;
+
+      assert.equal(res.status, 501);
+      assert.equal(body.success, false);
+      assert.equal(body.message, 'An unexpected internal server error occurred');
+      assert.ok(!JSON.stringify(body).includes('Provider credentials'));
+    } finally {
+      testServer.close();
+    }
+  });
+
   // -------------------------------------------------------------
   // Test 9: Unknown route
   // -------------------------------------------------------------

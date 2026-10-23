@@ -6,7 +6,6 @@ import {
   createOrderSchema,
   orderIdParamSchema,
   initiatePaymentSchema,
-  confirmPaymentSchema,
   checkinTicketSchema,
 } from './orders.schemas';
 
@@ -22,8 +21,8 @@ import {
 //   (Both email and phone verification are REQUIRED to create an order / purchase tickets)
 // - GET  /api/orders/my               (get attendee orders - authenticate)
 // - GET  /api/orders/:id              (get order details - authenticate)
-// - POST /api/orders/:id/pay          (initiate M-Pesa STK push - authenticate)
-// - POST /api/orders/:id/confirm-payment (complete/verify payment - authenticate)
+// - POST /api/orders/:id/pay          (Daraja STK push)
+// - POST /api/orders/:id/confirm-payment (disabled; client confirmation is never trusted)
 // - POST /api/orders/checkin          (validate QR ticket code - authenticate)
 // ===========================================
 
@@ -49,7 +48,6 @@ router.get(
   OrdersController.getOrderById
 );
 
-// Initiate M-Pesa STK Push
 router.post(
   '/:id/pay',
   authenticate,
@@ -58,12 +56,10 @@ router.post(
   OrdersController.initiatePayment
 );
 
-// Confirm/Complete M-Pesa Payment
 router.post(
   '/:id/confirm-payment',
   authenticate,
   validateParams(orderIdParamSchema),
-  validateBody(confirmPaymentSchema),
   OrdersController.confirmPayment
 );
 

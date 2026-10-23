@@ -8,6 +8,7 @@
 // ----------------------------------------------------------
 
 export type UserRole = 'ATTENDEE' | 'ORGANIZER' | 'ADMIN';
+export type OrganizerApplicationStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
   id: string;
@@ -15,6 +16,7 @@ export interface User {
   name: string;
   phone: string | null;
   role: UserRole;
+  organizerApplicationStatus: OrganizerApplicationStatus;
   emailVerified: boolean;
   phoneVerified: boolean;
   createdAt: string;
@@ -76,6 +78,14 @@ export interface SendPhoneOtpInput {
 /** POST /api/auth/verify-phone — request body (authenticated) */
 export interface VerifyPhoneInput {
   code: string; // 6-digit numeric OTP
+}
+
+export interface OrganizerApplication {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  createdAt: string;
 }
 
 // ----------------------------------------------------------
@@ -171,8 +181,7 @@ export interface CreateEventInput {
 export interface UpdateEventInput extends Partial<CreateEventInput> {}
 
 // ----------------------------------------------------------
-// Orders (Freddy's domain — NOT YET IMPLEMENTED in backend)
-// Types represent the INTENDED shape. Not verified endpoints.
+// Orders and booking API
 // ----------------------------------------------------------
 
 export type OrderStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
@@ -196,17 +205,16 @@ export interface Order {
   paidAt?: string;
   createdAt: string;
   items: OrderItem[];
+  payments?: Array<{
+    status: PaymentStatus;
+    resultDesc?: string | null;
+  }>;
 }
 
 /** POST /api/orders — request body */
 export interface CreateOrderInput {
   eventId: string;
-  items: Array<{ ticketTypeId: string; quantity: number; unitPriceKes?: number }>;
-}
-
-/** POST /api/orders/:id/pay — request body */
-export interface InitiatePaymentInput {
-  phoneNumber: string; // Kenyan M-Pesa number
+  items: Array<{ ticketTypeId: string; quantity: number }>;
 }
 
 // ----------------------------------------------------------

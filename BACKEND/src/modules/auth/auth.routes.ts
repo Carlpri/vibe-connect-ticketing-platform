@@ -6,10 +6,11 @@ import {
   verifyEmailSchema,
   resendVerificationEmailSchema,
   sendPhoneOtpSchema,
+  userIdParamSchema,
   verifyPhoneSchema,
 } from './auth.schemas';
-import { validateBody } from '../../shared/middleware/validate';
-import { authenticate } from './auth.middleware';
+import { validateBody, validateParams } from '../../shared/middleware/validate';
+import { authenticate, requireRole } from './auth.middleware';
 
 const router = Router();
 
@@ -31,6 +32,26 @@ router.post(
 // Authenticated Endpoints
 // -------------------------------------------------------------
 router.get('/me', authenticate, AuthController.getMe);
+router.get(
+  '/organizer-requests',
+  authenticate,
+  requireRole('ADMIN'),
+  AuthController.listPendingOrganizerApplications
+);
+router.post(
+  '/organizer-requests/:userId/approve',
+  authenticate,
+  requireRole('ADMIN'),
+  validateParams(userIdParamSchema),
+  AuthController.approveOrganizerApplication
+);
+router.post(
+  '/organizer-requests/:userId/reject',
+  authenticate,
+  requireRole('ADMIN'),
+  validateParams(userIdParamSchema),
+  AuthController.rejectOrganizerApplication
+);
 
 // Phone OTP verification endpoints (authenticated)
 router.post('/send-phone-otp', authenticate, validateBody(sendPhoneOtpSchema), AuthController.sendPhoneOtp);

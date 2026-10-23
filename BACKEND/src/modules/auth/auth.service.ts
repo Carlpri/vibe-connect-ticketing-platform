@@ -72,6 +72,7 @@ export class AuthService {
         name: input.name,
         phone: normalizedPhone,
         role: input.role as UserRole,
+        organizerApplicationStatus: input.role === 'ORGANIZER' ? 'PENDING' : 'NONE',
         emailVerified: false,
         phoneVerified: false,
         emailVerificationTokenHash,
@@ -84,6 +85,7 @@ export class AuthService {
         name: true,
         phone: true,
         role: true,
+        organizerApplicationStatus: true,
         emailVerified: true,
         phoneVerified: true,
         createdAt: true,
@@ -150,6 +152,7 @@ export class AuthService {
         name: user.name,
         phone: user.phone,
         role: user.role,
+        organizerApplicationStatus: user.organizerApplicationStatus,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
         createdAt: user.createdAt,
@@ -170,6 +173,7 @@ export class AuthService {
         name: true,
         phone: true,
         role: true,
+        organizerApplicationStatus: true,
         emailVerified: true,
         phoneVerified: true,
         createdAt: true,
@@ -181,6 +185,50 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  static async listPendingOrganizerApplications() {
+    return prisma.user.findMany({
+      where: { organizerApplicationStatus: 'PENDING' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  static async reviewOrganizerApplication(userId: string, decision: 'APPROVED' | 'REJECTED') {
+    const update = await prisma.user.updateMany({
+      where: { id: userId, organizerApplicationStatus: 'PENDING' },
+      data: {
+        role: decision === 'APPROVED' ? 'ORGANIZER' : 'ATTENDEE',
+        organizerApplicationStatus: decision,
+      },
+    });
+
+    if (update.count === 0) {
+      const userExists = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      if (!userExists) throw new AppError('Organizer application not found', 404);
+      throw new AppError('Organizer application is no longer pending', 409);
+    }
+
+    return prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        organizerApplicationStatus: true,
+      },
+    });
   }
 
   /**

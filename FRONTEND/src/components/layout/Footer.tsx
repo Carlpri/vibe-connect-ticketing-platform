@@ -42,7 +42,7 @@ export default function Footer() {
                 mb: 3,
               }}
             >
-              Kenya's modern cultural discovery and event ticketing platform. Live experiences, instant M-Pesa checkout, and verified access.
+              Kenya's modern cultural discovery and event ticketing platform for live experiences and verified event access.
             </Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <IconButton
@@ -181,14 +181,14 @@ export default function Footer() {
                 mb: 3,
               }}
             >
-              Engineered in Nairobi for East Africa’s entertainment ecosystem. Instant M-Pesa STK push, verified tickets, real-time check-in.
+              Engineered in Nairobi for East Africa’s entertainment ecosystem, with event discovery and secure ticket check-in.
             </Typography>
             <Box
               sx={{
                 p: 1.5,
                 borderRadius: '8px',
-                bgcolor: 'rgba(51, 199, 89, 0.08)',
-                border: '1px solid rgba(51, 199, 89, 0.25)',
+                bgcolor: 'rgba(232, 80, 58, 0.08)',
+                border: '1px solid rgba(232, 80, 58, 0.25)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 1.5,
@@ -199,13 +199,11 @@ export default function Footer() {
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  bgcolor: colors.mpesa,
-                  boxShadow: `0 0 10px ${colors.mpesa}`,
-                  animation: 'pulse-glow 2s ease-in-out infinite',
+                  bgcolor: colors.coral,
                 }}
               />
-              <Typography variant="caption" sx={{ color: colors.mpesa, fontWeight: 700, letterSpacing: '0.02em' }}>
-                M-Pesa STK Push Active (KES)
+              <Typography variant="caption" sx={{ color: colors.coral, fontWeight: 700, letterSpacing: '0.02em' }}>
+                Payment integration not configured
               </Typography>
             </Box>
           </Box>

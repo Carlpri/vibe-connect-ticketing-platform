@@ -13,6 +13,8 @@ import {
   RadioGroup,
   FormControl,
   Checkbox,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
@@ -27,7 +29,6 @@ import type { Cart } from '../types';
 import { colors } from '../styles/theme';
 import { bookingService } from '../services/bookingService';
 import PageMeta from '../components/common/PageMeta';
-import { AnalyticsEvents } from '../utils/analytics';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -35,13 +36,11 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [mpesaModalOpen, setMpesaModalOpen] = useState(false);
   const [backendOrderId, setBackendOrderId] = useState<string | null>(null);
+  const [reservationAmount, setReservationAmount] = useState<number | null>(null);
+  const [reservationExpiresAt, setReservationExpiresAt] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [reserving, setReserving] = useState(false);
 
-  // Attendee info
-  const [fullName, setFullName] = useState(user?.name || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [forSomeoneElse, setForSomeoneElse] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'MPESA' | 'CARD' | 'OTHER'>('MPESA');
 
   // Quantities state
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -81,87 +80,47 @@ export default function CheckoutPage() {
   }, 0);
 
   const totalCount = Object.values(quantities).reduce((sum, q) => sum + q, 0);
-  const serviceFeeKes = subtotalKes > 0 ? 50 : 0; // Flat KES 50 service fee for live booking
+  const serviceFeeKes = subtotalKes > 0 ? 50 : 0;
   const grandTotalKes = subtotalKes + serviceFeeKes;
 
   const handleProceed = async () => {
-    let orderIdToUse = backendOrderId;
-
-    if (!orderIdToUse && user) {
-      try {
-        const selectedItems = cart.items
-          .map((i) => ({
-            ticketTypeId: i.ticketType.id,
-            quantity: quantities[i.ticketType.id] ?? i.quantity,
-            unitPriceKes: i.ticketType.priceKes,
-          }))
-          .filter((i) => i.quantity > 0);
-
-        if (selectedItems.length > 0) {
-          const res = await bookingService.createOrder({
-            eventId: cart.event.id,
-            items: selectedItems,
-          });
-          if (res.data?.id) {
-            orderIdToUse = res.data.id;
-            setBackendOrderId(res.data.id);
-          }
-        }
-      } catch (err: any) {
-        console.warn('Backend order reservation notice:', err?.response?.data || err.message);
-      }
+    setBookingError(null);
+    if (!user) {
+      setBookingError('Sign in before reserving tickets.');
+      return;
     }
-
-    if (paymentMethod === 'MPESA') {
-      setMpesaModalOpen(true);
-    } else {
-      // Simulate direct completion for other methods
-      handlePaymentSuccess({
-        phone: phone || '0700000000',
-        transactionId: 'TX-' + Math.floor(100000 + Math.random() * 900000),
-      });
-    }
-  };
-
-  const handlePaymentSuccess = async ({
-    phone: paidPhone,
-    transactionId,
-  }: {
-    phone: string;
-    transactionId: string;
-  }) => {
     if (backendOrderId) {
-      try {
-        await bookingService.confirmPayment(backendOrderId, transactionId);
-      } catch (err) {
-        console.warn('Payment confirm note:', err);
-      }
+      setMpesaModalOpen(true);
+      return;
     }
 
-    const finalOrderId = backendOrderId || ('ORD-' + Math.floor(100000 + Math.random() * 900000));
-    const newOrder = {
-      orderId: finalOrderId,
-      transactionId,
-      phone: paidPhone,
-      attendeeName: fullName || user?.name || 'Guest Attendee',
-      attendeeEmail: email || user?.email || '',
-      event: cart.event,
-      items: cart.items.map((i) => ({
-        ...i,
-        quantity: quantities[i.ticketType.id] ?? i.quantity,
-      })).filter((i) => i.quantity > 0),
-      totalKes: grandTotalKes,
-      createdAt: new Date().toISOString(),
-      qrCodeData: `VIBE-CONNECT-${finalOrderId}`,
-    };
+    const items = cart.items
+      .map((item) => ({
+        ticketTypeId: item.ticketType.id,
+        quantity: quantities[item.ticketType.id] ?? item.quantity,
+      }))
+      .filter((item) => item.quantity > 0);
 
-    const existingOrders = JSON.parse(localStorage.getItem('vibe_connect_orders') || '[]');
-    existingOrders.unshift(newOrder);
-    localStorage.setItem('vibe_connect_orders', JSON.stringify(existingOrders));
+    if (items.length === 0) {
+      setBookingError('Choose at least one ticket before reserving.');
+      return;
+    }
 
-    sessionStorage.removeItem('vibe_connect_cart');
-    AnalyticsEvents.purchase(cart.event.id, finalOrderId, grandTotalKes);
-    navigate('/order-confirmation', { state: { order: newOrder } });
+    setReserving(true);
+    try {
+      const response = await bookingService.createOrder({
+        eventId: cart.event.id,
+        items,
+      });
+      setBackendOrderId(response.data.id);
+      setReservationAmount(response.data.totalKes);
+      setReservationExpiresAt(response.data.expiresAt);
+      setMpesaModalOpen(true);
+    } catch (err: any) {
+      setBookingError(err?.response?.data?.message || 'Could not reserve tickets. Please try again.');
+    } finally {
+      setReserving(false);
+    }
   };
 
   return (
@@ -182,7 +141,7 @@ export default function CheckoutPage() {
           variant="caption"
           sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.coral, letterSpacing: '0.08em', display: 'block', mb: 0.5 }}
         >
-          STEP 2 OF 2 • INSTANT M-PESA CHECKOUT
+          STEP 2 OF 2 • TICKET RESERVATION
         </Typography>
         <Typography
           component="h1"
@@ -261,7 +220,7 @@ export default function CheckoutPage() {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <IconButton
                           size="small"
-                          disabled={qty <= 1}
+                          disabled={qty <= 1 || Boolean(backendOrderId) || reserving}
                           onClick={() => handleQtyChange(item.ticketType.id, qty - 1)}
                           sx={{
                             bgcolor: '#FEFDFB',
@@ -278,6 +237,7 @@ export default function CheckoutPage() {
                         </Typography>
                         <IconButton
                           size="small"
+                          disabled={Boolean(backendOrderId) || reserving}
                           onClick={() => handleQtyChange(item.ticketType.id, qty + 1)}
                           sx={{
                             bgcolor: colors.lime,
@@ -326,8 +286,8 @@ export default function CheckoutPage() {
                   </Typography>
                   <TextField
                     placeholder="Enter your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    value={user?.name ?? ''}
+                    slotProps={{ input: { readOnly: true } }}
                     fullWidth
                     size="small"
                     required
@@ -337,12 +297,12 @@ export default function CheckoutPage() {
 
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg, mb: 0.6, display: 'block' }}>
-                    PHONE NUMBER (FOR M-PESA & SMS TICKET)
+                    PHONE NUMBER
                   </Typography>
                   <TextField
                     placeholder="e.g. 0712 345 678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    value={user?.phone ?? ''}
+                    slotProps={{ input: { readOnly: true } }}
                     fullWidth
                     size="small"
                     required
@@ -352,13 +312,13 @@ export default function CheckoutPage() {
 
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg, mb: 0.6, display: 'block' }}>
-                    EMAIL ADDRESS (FOR DIGITAL QR TICKET)
+                    EMAIL ADDRESS
                   </Typography>
                   <TextField
                     type="email"
                     placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={user?.email ?? ''}
+                    slotProps={{ input: { readOnly: true } }}
                     fullWidth
                     size="small"
                     required
@@ -368,12 +328,12 @@ export default function CheckoutPage() {
 
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Checkbox
-                    checked={forSomeoneElse}
-                    onChange={(e) => setForSomeoneElse(e.target.checked)}
+                    checked={false}
+                    disabled
                     sx={{ color: colors.border, '&.Mui-checked': { color: colors.limeFg } }}
                   />
                   <Typography variant="body2" sx={{ color: colors.fg, fontWeight: 600 }}>
-                    Buy ticket for someone else
+                    Guest attendee details are not supported yet
                   </Typography>
                 </Box>
               </Box>
@@ -399,13 +359,12 @@ export default function CheckoutPage() {
                   mb: 2,
                 }}
               >
-                3. SELECT PAYMENT METHOD
+                3. PAYMENT AVAILABILITY
               </Typography>
 
               <FormControl component="fieldset" fullWidth>
                 <RadioGroup
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  value="MPESA"
                   sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
                 >
                   {/* M-Pesa (Primary) */}
@@ -413,18 +372,16 @@ export default function CheckoutPage() {
                     sx={{
                       p: 2,
                       borderRadius: '8px',
-                      border: `1.5px solid ${paymentMethod === 'MPESA' ? colors.mpesa : colors.border}`,
-                      bgcolor: paymentMethod === 'MPESA' ? 'rgba(51, 199, 89, 0.08)' : 'transparent',
+                      border: `1.5px solid ${colors.mpesa}`,
+                      bgcolor: 'rgba(51, 199, 89, 0.08)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      cursor: 'pointer',
                     }}
-                    onClick={() => setPaymentMethod('MPESA')}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Radio
-                        checked={paymentMethod === 'MPESA'}
+                        checked
                         value="MPESA"
                         sx={{ color: colors.mpesa, '&.Mui-checked': { color: colors.mpesa } }}
                       />
@@ -433,7 +390,7 @@ export default function CheckoutPage() {
                           Safaricom Lipa na M-Pesa
                         </Typography>
                         <Typography variant="caption" sx={{ color: colors.mutedFg }}>
-                          Instant STK Push prompt to your phone
+                          An STK prompt is sent when Daraja is configured
                         </Typography>
                       </Box>
                     </Box>
@@ -460,27 +417,25 @@ export default function CheckoutPage() {
                     sx={{
                       p: 2,
                       borderRadius: '8px',
-                      border: `1px solid ${paymentMethod === 'CARD' ? colors.lime : colors.border}`,
-                      bgcolor: paymentMethod === 'CARD' ? 'rgba(181, 224, 42, 0.08)' : 'transparent',
+                      border: `1px solid ${colors.border}`,
+                      bgcolor: 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      cursor: 'pointer',
                     }}
-                    onClick={() => setPaymentMethod('CARD')}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Radio
-                        checked={paymentMethod === 'CARD'}
                         value="CARD"
+                        disabled
                         sx={{ '&.Mui-checked': { color: colors.limeFg } }}
                       />
                       <Box>
                         <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
-                          Credit or Debit Card
+                          Credit or Debit Card (Unavailable)
                         </Typography>
                         <Typography variant="caption" sx={{ color: colors.mutedFg }}>
-                          Visa, Mastercard accepted
+                          No card provider is configured
                         </Typography>
                       </Box>
                     </Box>
@@ -492,27 +447,25 @@ export default function CheckoutPage() {
                     sx={{
                       p: 2,
                       borderRadius: '8px',
-                      border: `1px solid ${paymentMethod === 'OTHER' ? colors.lime : colors.border}`,
-                      bgcolor: paymentMethod === 'OTHER' ? 'rgba(181, 224, 42, 0.08)' : 'transparent',
+                      border: `1px solid ${colors.border}`,
+                      bgcolor: 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      cursor: 'pointer',
                     }}
-                    onClick={() => setPaymentMethod('OTHER')}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Radio
-                        checked={paymentMethod === 'OTHER'}
                         value="OTHER"
+                        disabled
                         sx={{ '&.Mui-checked': { color: colors.limeFg } }}
                       />
                       <Box>
                         <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
-                          Airtel Money / Other
+                          Airtel Money / Other (Unavailable)
                         </Typography>
                         <Typography variant="caption" sx={{ color: colors.mutedFg }}>
-                          Alternative local wallets
+                          No alternative payment provider is configured
                         </Typography>
                       </Box>
                     </Box>
@@ -571,7 +524,7 @@ export default function CheckoutPage() {
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" sx={{ color: 'rgba(250, 247, 242, 0.7)' }}>
-                  Platform & STK Service Fee
+                  Platform Service Fee
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: colors.inkFg }}>
                   {serviceFeeKes === 0 ? 'FREE' : formatKes(serviceFeeKes)}
@@ -584,7 +537,7 @@ export default function CheckoutPage() {
             {/* Large Total in KES */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 3 }}>
               <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: colors.inkFg, textTransform: 'uppercase' }}>
-                TOTAL
+                ESTIMATED TOTAL
               </Typography>
               <Typography
                 sx={{
@@ -598,13 +551,26 @@ export default function CheckoutPage() {
               </Typography>
             </Box>
 
+            {bookingError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {bookingError}
+              </Alert>
+            )}
+            {backendOrderId && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Reservation {backendOrderId} is unpaid and expires at{' '}
+                {reservationExpiresAt ? formatDate(reservationExpiresAt) : 'the displayed reservation deadline'}.
+                No payment was taken and no tickets have been issued.
+              </Alert>
+            )}
+
             {/* Lime Action Button */}
             <Button
               variant="contained"
               fullWidth
               onClick={handleProceed}
-              disabled={totalCount === 0 || !phone}
-              startIcon={<LockIcon sx={{ fontSize: 18 }} />}
+              disabled={totalCount === 0 || reserving}
+              startIcon={reserving ? <CircularProgress size={18} /> : <LockIcon sx={{ fontSize: 18 }} />}
               sx={{
                 py: 1.6,
                 bgcolor: colors.lime,
@@ -618,7 +584,9 @@ export default function CheckoutPage() {
                 '&.Mui-disabled': { bgcolor: 'rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.3)' },
               }}
             >
-              Pay {formatKes(grandTotalKes)} via M-Pesa
+              {reserving
+                ? 'Creating Reservation…'
+                : backendOrderId ? 'Continue with M-Pesa' : 'Reserve and Pay with M-Pesa'}
             </Button>
 
             <Typography
@@ -631,20 +599,23 @@ export default function CheckoutPage() {
                 fontSize: '0.75rem',
               }}
             >
-              🔒 256-bit Encrypted Checkout • Instant M-Pesa STK confirmation
+              A reservation is not a paid purchase. Tickets are issued only after Daraja verifies the payment.
             </Typography>
           </Paper>
         </Box>
       </Container>
 
-      {/* M-Pesa STK Modal */}
+      {/* Payment is intentionally not simulated or confirmed in the frontend. */}
       <MpesaModal
         open={mpesaModalOpen}
         onClose={() => setMpesaModalOpen(false)}
-        amountKes={grandTotalKes}
-        initialPhone={phone}
+        amountKes={reservationAmount ?? grandTotalKes}
         orderId={backendOrderId || undefined}
-        onPaymentSuccess={handlePaymentSuccess}
+        initialPhone={user?.phone ?? ''}
+        onPaymentSuccess={() => {
+          setMpesaModalOpen(false);
+          navigate('/order-confirmation', { state: { orderId: backendOrderId } });
+        }}
       />
     </Box>
   );

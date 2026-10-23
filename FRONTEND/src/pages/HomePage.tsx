@@ -144,7 +144,7 @@ export default function HomePage() {
                 animation: 'heroContentIn 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both',
               }}
             >
-              Kenya’s front row to live concerts, cultural festivals, parties, and campus vibes. Instant M-Pesa checkout, verified tickets.
+              Kenya’s front row to live concerts, cultural festivals, parties, and campus vibes. Discover events and manage your bookings.
             </Typography>
 
             {/* 4. Search field directly over photo */}
@@ -401,7 +401,7 @@ export default function HomePage() {
                 opacity: 0.9,
               }}
             >
-              Sell tickets directly via M-Pesa STK Push. Fast payouts, zero hidden charges, real-time attendee check-in and QR verification at the gate.
+              Create and manage events, review ticket inventory, and validate attendee tickets at the gate.
             </Typography>
           </Box>
 

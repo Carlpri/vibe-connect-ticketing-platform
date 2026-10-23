@@ -157,7 +157,7 @@ export default function MyTicketsPage() {
         ) : tickets.length === 0 ? (
           <EmptyState
             title="NO TICKETS YET"
-            description="After you complete M-Pesa checkout for an event like VIBE-CONNECT 001 GOSPEL MIX, your unique passes appear here."
+            description="Verified paid tickets appear here after a payment provider integration is configured and confirms your order."
             actionLabel="Discover Events"
             onAction={() => window.location.assign('/events')}
           />

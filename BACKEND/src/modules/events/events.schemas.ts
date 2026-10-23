@@ -101,6 +101,10 @@ export const listEventsQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
+export const managedEventsQuerySchema = listEventsQuerySchema.extend({
+  period: z.enum(['all', 'upcoming', 'past']).default('all'),
+});
+
 export const eventIdParamSchema = z.object({
   id: z.string().trim().min(1, 'Event identifier is required'),
 });
@@ -108,3 +112,4 @@ export const eventIdParamSchema = z.object({
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
+export type ManagedEventsQuery = z.infer<typeof managedEventsQuerySchema>;

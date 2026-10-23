@@ -114,7 +114,7 @@ describe('Digital ticket QR flow', () => {
     });
   });
 
-  it('issues unique VC1 QR payloads after payment and validates at the gate', async () => {
+  it('keeps orders unpaid until provider verification and validates tickets from a paid test fixture', async () => {
     const createRes = await fetch(`${baseUrl}/api/orders`, {
       method: 'POST',
       headers: {
@@ -123,14 +123,16 @@ describe('Digital ticket QR flow', () => {
       },
       body: JSON.stringify({
         eventId,
-        items: [{ ticketTypeId, quantity: 2, unitPriceKes: 1500 }],
+        items: [{ ticketTypeId, quantity: 2, unitPriceKes: 1 }],
       }),
     });
     const createBody = (await createRes.json()) as any;
     assert.equal(createRes.status, 201);
-    const orderId = createBody.data.id as string;
+    const pendingOrderId = createBody.data.id as string;
+    assert.equal(createBody.data.items[0].unitPriceKes, 1500);
+    assert.equal(createBody.data.totalKes, 3050);
 
-    const confirmRes = await fetch(`${baseUrl}/api/orders/${orderId}/confirm-payment`, {
+    const confirmRes = await fetch(`${baseUrl}/api/orders/${pendingOrderId}/confirm-payment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -138,9 +140,25 @@ describe('Digital ticket QR flow', () => {
       },
       body: JSON.stringify({ mpesaReceiptNumber: 'QRT1234567' }),
     });
-    const confirmBody = (await confirmRes.json()) as any;
-    assert.equal(confirmRes.status, 200);
-    assert.equal(confirmBody.data.status, 'PAID');
+    assert.equal(confirmRes.status, 501);
+    assert.equal(
+      (await prisma.order.findUnique({ where: { id: pendingOrderId } }))?.status,
+      'PENDING'
+    );
+
+    const paidOrder = await prisma.order.create({
+      data: {
+        userId: attendeeId,
+        eventId,
+        totalKes: 3050,
+        status: 'PAID',
+        paidAt: new Date(),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        items: {
+          create: [{ ticketTypeId, quantity: 2, unitPriceKes: 1500 }],
+        },
+      },
+    });
 
     const myTicketsRes = await fetch(`${baseUrl}/api/tickets/my`, {
       headers: { Authorization: `Bearer ${attendeeToken}` },
@@ -149,6 +167,7 @@ describe('Digital ticket QR flow', () => {
     assert.equal(myTicketsRes.status, 200);
     assert.equal(myTicketsBody.data.verificationRequired, false);
     assert.equal(myTicketsBody.data.tickets.length, 2);
+    assert.ok(myTicketsBody.data.tickets.every((ticket: { orderId: string }) => ticket.orderId === paidOrder.id));
 
     const qrPayloads = myTicketsBody.data.tickets.map((t: { qrPayload: string | null }) => t.qrPayload);
     assert.ok(qrPayloads.every((p: string | null) => typeof p === 'string' && p.startsWith('VC1:')));

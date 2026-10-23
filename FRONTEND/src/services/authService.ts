@@ -10,6 +10,8 @@ import type {
   ResendVerificationEmailResponse,
   SendPhoneOtpInput,
   VerifyPhoneInput,
+  OrganizerApplication,
+  User,
   ApiSuccessResponse,
 } from '../types';
 
@@ -45,6 +47,21 @@ export const authService = {
 
   async getMe(): Promise<ApiSuccessResponse<MeResponse>> {
     const { data } = await apiClient.get<ApiSuccessResponse<MeResponse>>('/auth/me');
+    return data;
+  },
+
+  async getOrganizerApplications(): Promise<ApiSuccessResponse<OrganizerApplication[]>> {
+    const { data } = await apiClient.get<ApiSuccessResponse<OrganizerApplication[]>>('/auth/organizer-requests');
+    return data;
+  },
+
+  async approveOrganizerApplication(userId: string): Promise<ApiSuccessResponse<User>> {
+    const { data } = await apiClient.post<ApiSuccessResponse<User>>(`/auth/organizer-requests/${userId}/approve`);
+    return data;
+  },
+
+  async rejectOrganizerApplication(userId: string): Promise<ApiSuccessResponse<User>> {
+    const { data } = await apiClient.post<ApiSuccessResponse<User>>(`/auth/organizer-requests/${userId}/reject`);
     return data;
   },
 

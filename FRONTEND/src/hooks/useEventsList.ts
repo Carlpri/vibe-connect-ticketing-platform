@@ -4,8 +4,9 @@ import { readStaleEvents } from '../utils/eventsListCache';
 import type { Event, EventsQuery } from '../types';
 
 export function useEventsList(query?: EventsQuery) {
-  const [events, setEvents] = useState<Event[]>(() => readStaleEvents(query) ?? []);
-  const [loading, setLoading] = useState(() => !readStaleEvents(query));
+  const initialCache = import.meta.env.DEV ? readStaleEvents(query) : null;
+  const [events, setEvents] = useState<Event[]>(() => initialCache ?? []);
+  const [loading, setLoading] = useState(() => !initialCache);
   const [error, setError] = useState<string | null>(null);
   const [isRevalidating, setIsRevalidating] = useState(false);
 
@@ -13,7 +14,7 @@ export function useEventsList(query?: EventsQuery) {
 
   useEffect(() => {
     let cancelled = false;
-    const cached = readStaleEvents(query);
+    const cached = import.meta.env.DEV ? readStaleEvents(query) : null;
 
     if (cached?.length) {
       setEvents(cached);

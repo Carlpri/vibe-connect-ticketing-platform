@@ -31,6 +31,35 @@ export class AuthController {
     }
   }
 
+  static async listPendingOrganizerApplications(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const applications = await AuthService.listPendingOrganizerApplications();
+      sendSuccess(res, applications, 'Pending organizer applications fetched successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async approveOrganizerApplication(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId } = req.params as { userId: string };
+      const user = await AuthService.reviewOrganizerApplication(userId, 'APPROVED');
+      sendSuccess(res, user, 'Organizer application approved', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async rejectOrganizerApplication(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId } = req.params as { userId: string };
+      const user = await AuthService.reviewOrganizerApplication(userId, 'REJECTED');
+      sendSuccess(res, user, 'Organizer application rejected', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async verifyEmail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await AuthService.verifyEmail(req.body);

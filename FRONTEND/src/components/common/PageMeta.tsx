@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 const SITE_NAME = 'VIBE-CONNECT';
 const DEFAULT_DESCRIPTION =
-  'Discover concerts, festivals, nightlife and parties across Kenya. Instant M-Pesa STK push checkout and verified digital QR tickets on VIBE-CONNECT.';
+  'Discover concerts, festivals, nightlife and parties across Kenya. Browse events and manage your digital tickets on VIBE-CONNECT.';
 const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/+$/, '') ||
   'https://www.vibe-connect.co.ke';
 const DEFAULT_OG_IMAGE =
