@@ -11,6 +11,12 @@ The backend uses Daraja OAuth, STK Push, and STK Push Query. A payment is not ma
 5. Use the sandbox's provided test shortcode and supported test MSISDN. Sandbox transactions do not move real money.
 6. Restart the backend, create an authenticated verified customer's order, and submit the Daraja-supported test MSISDN to trigger the STK prompt.
 
+## Check Sandbox OAuth without a payment
+
+An authenticated administrator can open the Organizer Dashboard and select **Check Sandbox OAuth**. This calls `POST /api/payments/mpesa/sandbox/diagnostics`, which is restricted to admins, requires `MPESA_ENV=sandbox`, and returns only a success/failure message. The diagnostic requests an OAuth token from Daraja but never returns or logs the token and never sends STK Push.
+
+The diagnostic route and dashboard button must be present in the deployed version. OAuth success confirms only that Daraja accepted the app credentials; it does not validate a transaction, till linkage, callback delivery, or payment settlement.
+
 ## Production
 
 Do not set `MPESA_ENV=production` until Safaricom has approved the production app and provided its production shortcode, passkey, and credentials. Configure every `MPESA_*` value as a backend-only secret in Render, and set the callback URL to the deployed API HTTPS URL. Use a dedicated production credential set; do not reuse sandbox credentials.

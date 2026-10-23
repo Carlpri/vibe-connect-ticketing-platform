@@ -4,6 +4,7 @@ import { sendSuccess } from '../../shared/utils/apiResponse';
 import { AuthenticatedRequest } from '../../shared/types';
 import { mpesaCallbackSchema } from './orders.schemas';
 import { AppError } from '../../shared/errors/AppError';
+import { MpesaService } from './mpesa.service';
 
 export class OrdersController {
   /**
@@ -74,6 +75,15 @@ export class OrdersController {
       }
       await OrdersService.processMpesaCallback(parsed.data);
       res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyMpesaSandbox(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await MpesaService.verifySandboxAuthentication();
+      sendSuccess(res, { authenticated: true }, 'Daraja Sandbox authentication successful', 200);
     } catch (error) {
       next(error);
     }

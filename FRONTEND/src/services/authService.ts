@@ -65,6 +65,13 @@ export const authService = {
     return data;
   },
 
+  async verifyMpesaSandbox(): Promise<ApiSuccessResponse<{ authenticated: boolean }>> {
+    const { data } = await apiClient.post<ApiSuccessResponse<{ authenticated: boolean }>>(
+      '/payments/mpesa/sandbox/diagnostics'
+    );
+    return data;
+  },
+
   async verifyEmail(input: VerifyEmailInput): Promise<ApiSuccessResponse<{ emailVerified: boolean; email: string }>> {
     const { data } = await apiClient.post('/auth/verify-email', input);
     return data;

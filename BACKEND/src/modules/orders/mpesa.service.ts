@@ -150,6 +150,15 @@ export class MpesaService {
     return getDarajaConfiguration() !== null;
   }
 
+  static async verifySandboxAuthentication(): Promise<void> {
+    if (env.MPESA_ENV !== 'sandbox') {
+      throw new AppError('Sandbox diagnostics are available only in Sandbox mode', 409);
+    }
+
+    const config = requiredConfiguration();
+    await getAccessToken(config);
+  }
+
   static async initiateStkPush(input: {
     amountKes: number;
     orderId: string;
