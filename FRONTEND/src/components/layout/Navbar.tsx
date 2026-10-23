@@ -248,7 +248,10 @@ export default function Navbar() {
             {/* Mobile menu button */}
             <IconButton
               sx={{ display: { md: 'none' }, color: colors.fg, ml: 0.5 }}
-              onClick={() => setDrawerOpen(true)}
+              onClick={(event) => {
+                event.currentTarget.blur();
+                setDrawerOpen(true);
+              }}
               aria-label="Open menu"
             >
               <MenuIcon />
