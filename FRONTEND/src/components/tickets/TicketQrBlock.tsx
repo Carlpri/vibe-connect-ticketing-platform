@@ -1,15 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Button, CircularProgress } from '@mui/material';
+import { Alert, Box, Typography, Button, CircularProgress } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { colors } from '../../styles/theme';
+
+interface TicketImageDetails {
+  eventTitle: string;
+  ticketType: string;
+  holderName: string;
+  date: string;
+  venue: string;
+  city: string;
+  serialNumber: number;
+  ticketId: string;
+}
 
 interface TicketQrBlockProps {
   qrPayload: string | null;
   ticketLabel: string;
   locked?: boolean;
   lockedMessage?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  ticketDetails: TicketImageDetails;
 }
 
 export default function TicketQrBlock({
@@ -17,9 +31,13 @@ export default function TicketQrBlock({
   ticketLabel,
   locked = false,
   lockedMessage,
+  emailVerified = false,
+  phoneVerified = false,
+  ticketDetails,
 }: TicketQrBlockProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!qrPayload || locked) {
@@ -39,7 +57,10 @@ export default function TicketQrBlock({
         if (!cancelled) setDataUrl(url);
       })
       .catch(() => {
-        if (!cancelled) setDataUrl(null);
+        if (!cancelled) {
+          setDataUrl(null);
+          setDownloadError('Could not generate the ticket QR code. Please reload the page and try again.');
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -50,12 +71,70 @@ export default function TicketQrBlock({
     };
   }, [qrPayload, locked]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!dataUrl) return;
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `${ticketLabel.replace(/\s+/g, '-').toLowerCase()}-qr.png`;
-    link.click();
+    setDownloadError(null);
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 900;
+      canvas.height = 1200;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('Canvas is unavailable');
+      }
+
+      context.fillStyle = '#FEFDFB';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#0E1013';
+      context.fillRect(0, 0, canvas.width, 300);
+      context.fillStyle = '#B5E02A';
+      context.font = 'bold 30px Arial';
+      context.fillText('VIBE CONNECT  |  EVENT PASS', 60, 75);
+      context.fillStyle = '#FFFFFF';
+      context.font = 'bold 48px Arial';
+
+      const titleWords = ticketDetails.eventTitle.split(/\s+/);
+      let titleLine = '';
+      let titleY = 155;
+      titleWords.forEach((word) => {
+        const nextLine = titleLine ? `${titleLine} ${word}` : word;
+        if (context.measureText(nextLine).width > 780 && titleLine) {
+          context.fillText(titleLine, 60, titleY);
+          titleY += 60;
+          titleLine = word;
+        } else {
+          titleLine = nextLine;
+        }
+      });
+      if (titleLine) context.fillText(titleLine, 60, titleY);
+
+      context.fillStyle = '#262220';
+      context.font = 'bold 30px Arial';
+      context.fillText(ticketDetails.ticketType, 60, 390);
+      context.font = '24px Arial';
+      context.fillText(`Ticket #${ticketDetails.serialNumber}`, 60, 440);
+      context.fillText(ticketDetails.holderName, 60, 500);
+      context.fillText(ticketDetails.date, 60, 545);
+      context.fillText(`${ticketDetails.venue}, ${ticketDetails.city}`, 60, 590);
+
+      const qrImage = new Image();
+      qrImage.src = dataUrl;
+      await new Promise<void>((resolve, reject) => {
+        qrImage.onload = () => resolve();
+        qrImage.onerror = () => reject(new Error('Could not load the ticket QR code'));
+      });
+      context.drawImage(qrImage, 250, 640, 400, 400);
+      context.fillStyle = '#5B5651';
+      context.font = '20px monospace';
+      context.fillText(`Ticket ID: ${ticketDetails.ticketId}`, 60, 1120);
+
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `${ticketLabel.replace(/\s+/g, '-').toLowerCase()}-ticket.png`;
+      link.click();
+    } catch {
+      setDownloadError('Could not download the ticket image. Please try again or use Download PDF.');
+    }
   };
 
   if (locked) {
@@ -87,29 +166,20 @@ export default function TicketQrBlock({
           QR LOCKED
         </Box>
         <Typography variant="caption" sx={{ display: 'block', mt: 1, color: colors.lime, fontWeight: 700 }}>
-          {lockedMessage || 'Verify email & phone to unlock'}
+          {lockedMessage || 'Ticket unavailable'}
         </Typography>
-        <Button
-          component={Link}
-          to="/verify-email"
-          size="small"
-          variant="contained"
-          sx={{
-            mt: 1,
-            bgcolor: colors.lime,
-            color: colors.limeFg,
-            fontSize: '0.72rem',
-            fontWeight: 800,
-            textTransform: 'uppercase',
-            letterSpacing: '0.03em',
-            py: 0.4,
-            px: 1.5,
-            borderRadius: '4px',
-            '&:hover': { bgcolor: colors.limeLt },
-          }}
-        >
-          Verify Email
-        </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
+          {!emailVerified && (
+            <Button component={Link} to="/verify-email" size="small" variant="contained" sx={{ bgcolor: colors.lime, color: colors.limeFg, fontSize: '0.68rem', fontWeight: 800 }}>
+              VERIFY EMAIL
+            </Button>
+          )}
+          {!phoneVerified && (
+            <Button component={Link} to="/profile" size="small" variant="outlined" sx={{ fontSize: '0.68rem', fontWeight: 800 }}>
+              VERIFY PHONE NUMBER
+            </Button>
+          )}
+        </Box>
       </Box>
     );
   }
@@ -159,8 +229,13 @@ export default function TicketQrBlock({
             '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
           }}
         >
-          Download QR
+          Download image
         </Button>
+      )}
+      {downloadError && (
+        <Alert severity="error" sx={{ maxWidth: 220, py: 0, fontSize: '0.7rem' }}>
+          {downloadError}
+        </Alert>
       )}
     </Box>
   );

@@ -33,6 +33,7 @@ import PageMeta from '../components/common/PageMeta';
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const hasVerifiedContact = Boolean(user?.emailVerified || user?.phoneVerified);
   const [cart, setCart] = useState<Cart | null>(null);
   const [mpesaModalOpen, setMpesaModalOpen] = useState(false);
   const [backendOrderId, setBackendOrderId] = useState<string | null>(null);
@@ -87,6 +88,10 @@ export default function CheckoutPage() {
     setBookingError(null);
     if (!user) {
       setBookingError('Sign in before reserving tickets.');
+      return;
+    }
+    if (!hasVerifiedContact) {
+      setBookingError('Verify your email or phone number before purchasing tickets.');
       return;
     }
     if (backendOrderId) {
@@ -156,6 +161,26 @@ export default function CheckoutPage() {
         >
           COMPLETE YOUR ORDER
         </Typography>
+
+        {user && !hasVerifiedContact && (
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: '8px' }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Verify at least one contact method before reserving tickets.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {!user.emailVerified && (
+                <Button component={Link} to="/verify-email" size="small" variant="contained">
+                  VERIFY EMAIL
+                </Button>
+              )}
+              {!user.phoneVerified && (
+                <Button component={Link} to="/profile" size="small" variant="outlined">
+                  VERIFY PHONE NUMBER
+                </Button>
+              )}
+            </Box>
+          </Alert>
+        )}
 
         {/* Sequence: Tickets → Details → Payment with Dark Order Summary */}
         <Box

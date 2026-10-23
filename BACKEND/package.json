@@ -11,7 +11,8 @@
     "lint": "eslint src/",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "seed:admin": "node dist/scripts/seed-admin.js"
   },
   "repository": {
     "type": "git",

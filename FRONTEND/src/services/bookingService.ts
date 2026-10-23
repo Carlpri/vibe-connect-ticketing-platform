@@ -4,7 +4,7 @@
  * Connected to Freddy's Orders & Payments Backend module.
  *
  * Endpoints:
- * - POST /api/orders (requires authenticate + requireFullyVerified)
+ * - POST /api/orders (requires authenticate + at least one verified contact method)
  * - GET  /api/orders/my (requires authenticate)
  * - GET  /api/orders/:id (requires authenticate)
  * Payment endpoints remain unavailable until a provider integration is configured.
@@ -15,7 +15,7 @@ import type { Order, CreateOrderInput, ApiSuccessResponse } from '../types';
 export const bookingService = {
   /**
    * POST /api/orders
-   * Requires: authenticate + requireFullyVerified middleware
+   * Requires: authenticate + email or phone verification
    */
   async createOrder(input: CreateOrderInput): Promise<ApiSuccessResponse<Order>> {
     const { data } = await apiClient.post<ApiSuccessResponse<Order>>('/orders', input);

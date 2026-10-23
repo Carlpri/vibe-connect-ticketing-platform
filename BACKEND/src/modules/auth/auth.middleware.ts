@@ -103,10 +103,9 @@ export const requirePhoneVerified = async (
 };
 
 /**
- * Ensures user has completed BOTH email and phone verification before accessing protected actions
- * such as purchasing tickets or creating orders.
+ * Ensures a user has verified at least one contact method before purchasing tickets.
  */
-export const requireFullyVerified = async (
+export const requireAtLeastOneVerified = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
@@ -127,17 +126,7 @@ export const requireFullyVerified = async (
   }
 
   if (!user.emailVerified && !user.phoneVerified) {
-    sendError(res, 'Both email and phone number verification are required to complete this action', 403);
-    return;
-  }
-
-  if (!user.emailVerified) {
-    sendError(res, 'Email verification required to complete this action', 403);
-    return;
-  }
-
-  if (!user.phoneVerified) {
-    sendError(res, 'Phone number verification required to complete this action', 403);
+    sendError(res, 'Verify your email or phone number before purchasing tickets', 403);
     return;
   }
 

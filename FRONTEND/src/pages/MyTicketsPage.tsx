@@ -72,9 +72,9 @@ export default function MyTicketsPage() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: { xs: 4, md: 6 }, pb: 14 }}>
+    <Box className="ticket-print-page" sx={{ minHeight: '100vh', bgcolor: colors.bg, py: { xs: 4, md: 6 }, pb: 14 }}>
       <Container maxWidth="lg">
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
+        <Box className="ticket-no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
           <Box>
             <Typography
               variant="caption"
@@ -112,32 +112,33 @@ export default function MyTicketsPage() {
                 '&:hover': { bgcolor: colors.mutedBg },
               }}
             >
-              Print Passes
+              Print / Save as PDF
             </Button>
           )}
         </Box>
 
         {verificationRequired && (
           <Alert
+            className="ticket-no-print"
             severity="info"
             icon={<VerifiedUserIcon fontSize="inherit" />}
             sx={{ mb: 3, borderRadius: '8px' }}
           >
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
-              Verify your email and phone to reveal QR codes and download tickets
+              Verify your email or phone number to reveal QR codes and download tickets
             </Typography>
             <Typography variant="body2" sx={{ mb: 1.5 }}>
-              Each pass gets a unique signed QR code after verification. Gate scanners only accept authentic VC1 tickets.
+              Each paid ticket has its own signed QR code. Verify one contact method to unlock the passes.
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {!emailVerified && (
                 <Button component={Link} to="/verify-email" size="small" variant="contained" sx={{ bgcolor: colors.lime, color: colors.limeFg }}>
-                  Verify email
+                  VERIFY EMAIL
                 </Button>
               )}
               {!phoneVerified && (
                 <Button component={Link} to="/profile" size="small" variant="outlined">
-                  Verify phone (Profile)
+                  VERIFY PHONE NUMBER
                 </Button>
               )}
             </Box>
@@ -145,7 +146,7 @@ export default function MyTicketsPage() {
         )}
 
         {error && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
+          <Alert className="ticket-no-print" severity="warning" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
@@ -163,6 +164,7 @@ export default function MyTicketsPage() {
           />
         ) : (
           <Box
+            className="ticket-print-area"
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
@@ -171,6 +173,7 @@ export default function MyTicketsPage() {
           >
             {tickets.map((ticket) => (
               <Paper
+                className="ticket-pass"
                 key={ticket.id}
                 elevation={0}
                 sx={{
@@ -288,9 +291,21 @@ export default function MyTicketsPage() {
                     qrPayload={ticket.qrPayload}
                     ticketLabel={`${ticket.event.title}-${ticket.serialNumber}`}
                     locked={verificationRequired || !ticket.qrPayload}
+                    emailVerified={emailVerified}
+                    phoneVerified={phoneVerified}
+                    ticketDetails={{
+                      eventTitle: ticket.event.title,
+                      ticketType: ticket.ticketType.name,
+                      holderName: ticket.holderName,
+                      date: formatDate(ticket.event.startsAt),
+                      venue: ticket.event.venue,
+                      city: ticket.event.city,
+                      serialNumber: ticket.serialNumber,
+                      ticketId: ticket.id,
+                    }}
                     lockedMessage={
                       verificationRequired
-                        ? 'Verify email & phone to unlock'
+                        ? 'Verify email or phone to unlock'
                         : ticket.status === 'VOID'
                           ? 'Ticket voided'
                           : undefined

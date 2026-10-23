@@ -534,7 +534,7 @@ describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
   // -------------------------------------------------------------
   // Test 13: Unverified users cannot perform protected actions
   // -------------------------------------------------------------
-  it('13. requireFullyVerified blocks unverified users from protected actions (HTTP 403)', async () => {
+  it('13. requireAtLeastOneVerified blocks users without a verified contact (HTTP 403)', async () => {
     const user = await prisma.user.findUnique({ where: { email: testEmail1 } });
     assert.ok(user);
 
@@ -550,15 +550,15 @@ describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
       { expiresIn: '1h' }
     );
 
-    // Test with a test endpoint guarded by requireFullyVerified
+    // Test with a test endpoint guarded by the purchase verification policy
     const expressApp = (await import('express')).default;
-    const { requireFullyVerified } = await import('../modules/auth/auth.middleware');
+    const { requireAtLeastOneVerified } = await import('../modules/auth/auth.middleware');
     const testApp = expressApp();
     testApp.use(expressApp.json());
     testApp.post(
       '/test/purchase',
       (await import('../modules/auth/auth.middleware')).authenticate,
-      requireFullyVerified,
+      requireAtLeastOneVerified,
       (_req, res) => {
         res.json({ success: true, message: 'Ticket purchased' });
       }
@@ -589,14 +589,14 @@ describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
   // -------------------------------------------------------------
   // Test 14: Verified users pass the verification middleware
   // -------------------------------------------------------------
-  it('14. Fully verified users pass requireFullyVerified guard', async () => {
+  it('14. A user with one verified contact passes the purchase verification guard', async () => {
     const user = await prisma.user.findUnique({ where: { email: testEmail1 } });
     assert.ok(user);
 
-    // Set both to true
+    // Email verification alone is sufficient.
     await prisma.user.update({
       where: { id: user.id },
-      data: { emailVerified: true, phoneVerified: true },
+      data: { emailVerified: true, phoneVerified: false },
     });
 
     const token = jwt.sign(
@@ -606,13 +606,13 @@ describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
     );
 
     const expressApp = (await import('express')).default;
-    const { requireFullyVerified } = await import('../modules/auth/auth.middleware');
+    const { requireAtLeastOneVerified } = await import('../modules/auth/auth.middleware');
     const testApp = expressApp();
     testApp.use(expressApp.json());
     testApp.post(
       '/test/purchase',
       (await import('../modules/auth/auth.middleware')).authenticate,
-      requireFullyVerified,
+      requireAtLeastOneVerified,
       (_req, res) => {
         res.json({ success: true, message: 'Ticket purchased successfully' });
       }

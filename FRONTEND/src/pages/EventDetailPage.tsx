@@ -117,7 +117,7 @@ export default function EventDetailPage() {
     );
   }
 
-  const isFullyVerified = Boolean(user?.emailVerified && user?.phoneVerified);
+  const hasVerifiedContact = Boolean(user?.emailVerified || user?.phoneVerified);
   const minPrice = event.ticketTypes?.length
     ? Math.min(...event.ticketTypes.map((t) => t.priceKes))
     : 0;
@@ -664,7 +664,9 @@ export default function EventDetailPage() {
               quantities={quantities}
               onQuantityChange={handleQuantityChange}
               onProceedToCheckout={handleProceedToCheckout}
-              isFullyVerified={isFullyVerified}
+              hasVerifiedContact={hasVerifiedContact}
+              emailVerified={Boolean(user?.emailVerified)}
+              phoneVerified={Boolean(user?.phoneVerified)}
             />
           </Box>
         </Box>

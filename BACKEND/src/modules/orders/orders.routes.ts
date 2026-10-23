@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, requireFullyVerified, requireRole } from '../auth/auth.middleware';
+import { authenticate, requireAtLeastOneVerified, requireRole } from '../auth/auth.middleware';
 import { validateBody, validateParams } from '../../shared/middleware/validate';
 import { OrdersController } from './orders.controller';
 import {
@@ -17,8 +17,8 @@ import {
 //
 // Reserved Endpoints & Protection Rules:
 // - POST /api/orders
-//   PROTECTION: authenticate + requireFullyVerified
-//   (Both email and phone verification are REQUIRED to create an order / purchase tickets)
+//   PROTECTION: authenticate + requireAtLeastOneVerified
+//   (Either email or phone verification is REQUIRED to create an order / purchase tickets)
 // - GET  /api/orders/my               (get attendee orders - authenticate)
 // - GET  /api/orders/:id              (get order details - authenticate)
 // - POST /api/orders/:id/pay          (Daraja STK push)
@@ -28,11 +28,11 @@ import {
 
 const router = Router();
 
-// Create order (Reserved tickets for 15 minutes) — requires full email & phone verification
+// Create order (Reserved tickets for 15 minutes) — requires one verified contact method
 router.post(
   '/',
   authenticate,
-  requireFullyVerified,
+  requireAtLeastOneVerified,
   validateBody(createOrderSchema),
   OrdersController.createOrder
 );

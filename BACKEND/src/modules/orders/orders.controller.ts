@@ -9,7 +9,7 @@ import { MpesaService } from './mpesa.service';
 export class OrdersController {
   /**
    * POST /api/orders
-   * Requires: authenticate + requireFullyVerified
+   * Requires: authenticate + at least one verified contact method
    */
   static async createOrder(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {

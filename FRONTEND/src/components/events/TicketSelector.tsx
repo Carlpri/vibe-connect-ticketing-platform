@@ -1,4 +1,5 @@
 import { Box, Paper, Typography, IconButton, Button, Divider, Alert } from '@mui/material';
+import { Link } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
@@ -11,7 +12,9 @@ interface TicketSelectorProps {
   quantities: Record<string, number>;
   onQuantityChange: (ticketTypeId: string, newQty: number) => void;
   onProceedToCheckout: () => void;
-  isFullyVerified?: boolean;
+  hasVerifiedContact?: boolean;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
 }
 
 export default function TicketSelector({
@@ -19,7 +22,9 @@ export default function TicketSelector({
   quantities,
   onQuantityChange,
   onProceedToCheckout,
-  isFullyVerified = true,
+  hasVerifiedContact = true,
+  emailVerified = false,
+  phoneVerified = false,
 }: TicketSelectorProps) {
   const totalCount = Object.values(quantities).reduce((sum, q) => sum + q, 0);
   const totalKes = ticketTypes.reduce((sum, ticket) => {
@@ -167,9 +172,23 @@ export default function TicketSelector({
         </Typography>
       </Box>
 
-      {!isFullyVerified && totalCount > 0 && (
-        <Alert severity="warning" sx={{ mb: 2, fontSize: '0.8rem', borderRadius: '8px' }}>
-          Backend policy requires email and phone verification before final ticket checkout.
+      {!hasVerifiedContact && totalCount > 0 && (
+        <Alert severity="warning" sx={{ mb: 2, borderRadius: '8px' }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Verify your email or phone number before purchasing tickets.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {!emailVerified && (
+              <Button component={Link} to="/verify-email" size="small" variant="contained">
+                VERIFY EMAIL
+              </Button>
+            )}
+            {!phoneVerified && (
+              <Button component={Link} to="/profile" size="small" variant="outlined">
+                VERIFY PHONE NUMBER
+              </Button>
+            )}
+          </Box>
         </Alert>
       )}
 

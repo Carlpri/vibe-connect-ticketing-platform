@@ -109,7 +109,7 @@ export default function ProfilePage() {
             icon={<CheckCircleIcon />}
             sx={{ mb: 4, borderRadius: '8px', bgcolor: 'rgba(43, 184, 90, 0.1)', color: colors.success, border: `1px solid ${colors.success}` }}
           >
-            Your account is fully verified. You can create events and make ticket reservations; payment processing is not yet configured.
+            Your account is fully verified. You can create events and make ticket reservations.
           </Alert>
         ) : (
           <Alert
@@ -238,7 +238,7 @@ export default function ProfilePage() {
                       '&:hover': { bgcolor: colors.limeLt },
                     }}
                   >
-                    {resendingEmail ? 'Sending...' : 'Send Verification Email'}
+                    {resendingEmail ? 'Sending...' : 'VERIFY EMAIL'}
                   </Button>
                   <Button
                     component={Link}
@@ -287,7 +287,7 @@ export default function ProfilePage() {
                       disabled={sendingOtp}
                       sx={{ bgcolor: colors.lime, color: colors.limeFg, fontWeight: 800, borderRadius: '8px', '&:hover': { bgcolor: colors.limeLt } }}
                     >
-                      {sendingOtp ? 'Sending...' : 'Send SMS OTP'}
+                      {sendingOtp ? 'Sending...' : 'VERIFY PHONE NUMBER'}
                     </Button>
                   ) : (
                     <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>

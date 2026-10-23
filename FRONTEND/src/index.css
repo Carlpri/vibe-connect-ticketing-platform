@@ -187,3 +187,34 @@ body {
     scroll-behavior: auto;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .ticket-print-area,
+  .ticket-print-area * {
+    visibility: visible;
+  }
+
+  .ticket-print-area {
+    position: absolute !important;
+    inset: 0;
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .ticket-pass {
+    width: 100% !important;
+    margin: 0 0 16px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .ticket-no-print {
+    display: none !important;
+  }
+}

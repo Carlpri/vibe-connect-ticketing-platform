@@ -70,7 +70,7 @@ export class TicketsService {
       throw new AppError('User not found', 404);
     }
 
-    const canRevealQr = user.emailVerified && user.phoneVerified;
+    const canRevealQr = user.emailVerified || user.phoneVerified;
 
     const paidOrdersMissingTickets = await prisma.order.findMany({
       where: {

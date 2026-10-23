@@ -11,6 +11,17 @@ describe('ticket QR signing', () => {
     assert.equal(parseAndVerifyTicketQrPayload(payload), SAMPLE_ID);
   });
 
+  it('creates distinct signed payloads for distinct ticket IDs', () => {
+    const ticketIds = [
+      SAMPLE_ID,
+      '83744e61-2328-4e62-a036-c483ef009aff',
+    ];
+    const payloads = ticketIds.map(buildTicketQrPayload);
+
+    assert.equal(new Set(payloads).size, ticketIds.length);
+    assert.deepEqual(payloads.map(parseAndVerifyTicketQrPayload), ticketIds);
+  });
+
   it('rejects tampered signature', () => {
     const payload = buildTicketQrPayload(SAMPLE_ID);
     const tampered = payload.slice(0, -3) + 'xxx';

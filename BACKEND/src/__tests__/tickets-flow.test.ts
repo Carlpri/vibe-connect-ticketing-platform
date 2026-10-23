@@ -203,7 +203,7 @@ describe('Digital ticket QR flow', () => {
     assert.equal(rescanBody.data.alreadyCheckedIn, true);
   });
 
-  it('hides QR payloads until email and phone are verified', async () => {
+  it('requires one verified contact method and reveals unique QR payloads for paid tickets', async () => {
     const unverified = await prisma.user.create({
       data: {
         email: `ticket-unverified-${runId}@example.com`,
@@ -211,7 +211,7 @@ describe('Digital ticket QR flow', () => {
         passwordHash: 'hash',
         phone: `254713${String(runId).slice(-6)}`,
         emailVerified: false,
-        phoneVerified: false,
+        phoneVerified: true,
       },
     });
 
@@ -233,7 +233,41 @@ describe('Digital ticket QR flow', () => {
           items: [{ ticketTypeId, quantity: 1, unitPriceKes: 1500 }],
         }),
       });
-      assert.equal(createRes.status, 403);
+      assert.equal(createRes.status, 201);
+
+      await prisma.user.update({
+        where: { id: unverified.id },
+        data: { emailVerified: true, phoneVerified: false },
+      });
+      const emailVerifiedOrderRes = await fetch(`${baseUrl}/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          eventId,
+          items: [{ ticketTypeId, quantity: 1 }],
+        }),
+      });
+      assert.equal(emailVerifiedOrderRes.status, 201);
+
+      await prisma.user.update({
+        where: { id: unverified.id },
+        data: { emailVerified: false, phoneVerified: false },
+      });
+      const noVerifiedContactOrderRes = await fetch(`${baseUrl}/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          eventId,
+          items: [{ ticketTypeId, quantity: 1 }],
+        }),
+      });
+      assert.equal(noVerifiedContactOrderRes.status, 403);
 
       const order = await prisma.order.create({
         data: {
@@ -244,20 +278,21 @@ describe('Digital ticket QR flow', () => {
           paidAt: new Date(),
           expiresAt: new Date(Date.now() + 15 * 60 * 1000),
           items: {
-            create: [{ ticketTypeId, quantity: 1, unitPriceKes: 1500 }],
+            create: [{ ticketTypeId, quantity: 2, unitPriceKes: 1500 }],
           },
         },
       });
 
-      await prisma.ticket.create({
-        data: {
+      const orderItem = await prisma.orderItem.findFirstOrThrow({ where: { orderId: order.id } });
+      await prisma.ticket.createMany({
+        data: [1, 2].map((serialNumber) => ({
           orderId: order.id,
-          orderItemId: (await prisma.orderItem.findFirst({ where: { orderId: order.id } }))!.id,
+          orderItemId: orderItem.id,
           ticketTypeId,
           eventId,
           userId: unverified.id,
-          serialNumber: 1,
-        },
+          serialNumber,
+        })),
       });
 
       const myTicketsRes = await fetch(`${baseUrl}/api/tickets/my`, {
@@ -266,7 +301,21 @@ describe('Digital ticket QR flow', () => {
       const myTicketsBody = (await myTicketsRes.json()) as any;
       assert.equal(myTicketsRes.status, 200);
       assert.equal(myTicketsBody.data.verificationRequired, true);
-      assert.equal(myTicketsBody.data.tickets[0].qrPayload, null);
+      assert.ok(myTicketsBody.data.tickets.every((ticket: { qrPayload: string | null }) => ticket.qrPayload === null));
+
+      await prisma.user.update({
+        where: { id: unverified.id },
+        data: { phoneVerified: true },
+      });
+      const verifiedTicketsRes = await fetch(`${baseUrl}/api/tickets/my`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const verifiedTicketsBody = (await verifiedTicketsRes.json()) as any;
+      assert.equal(verifiedTicketsBody.data.verificationRequired, false);
+      const qrPayloads = verifiedTicketsBody.data.tickets.map((ticket: { qrPayload: string | null }) => ticket.qrPayload);
+      assert.ok(qrPayloads.every((payload: string | null) => typeof payload === 'string' && payload.startsWith('VC1:')));
+      assert.equal(new Set(qrPayloads).size, 2);
+      assert.ok(qrPayloads.every((payload: string) => parseAndVerifyTicketQrPayload(payload)));
     } finally {
       await prisma.ticket.deleteMany({ where: { userId: unverified.id } });
       await prisma.payment.deleteMany({ where: { order: { userId: unverified.id } } });
