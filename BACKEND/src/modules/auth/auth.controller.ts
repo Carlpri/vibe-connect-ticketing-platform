@@ -71,12 +71,17 @@ export class AuthController {
 
   static async resendVerificationEmail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await AuthService.resendVerificationEmail(req.body);
+      const origin = req.get('origin') || (req.get('referer') ? new URL(req.get('referer')!).origin : undefined);
+      const result = await AuthService.resendVerificationEmail({
+        ...req.body,
+        origin,
+      });
       sendSuccess(res, result, result.message, 200);
     } catch (error) {
       next(error);
     }
   }
+
 
   static async sendPhoneOtp(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {

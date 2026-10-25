@@ -68,7 +68,15 @@ export interface VerifyEmailInput {
 /** POST /api/auth/resend-verification-email — request body */
 export interface ResendVerificationEmailInput {
   email: string;
+  redirectUrl?: string;
 }
+
+export interface ResendVerificationEmailResponse {
+  sent: boolean;
+  message: string;
+  verificationUrl?: string;
+}
+
 
 /** POST /api/auth/send-phone-otp — request body (authenticated) */
 export interface SendPhoneOtpInput {

@@ -31,7 +31,9 @@ export const verifyEmailSchema = z.object({
 
 export const resendVerificationEmailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
+  redirectUrl: z.string().optional(),
 });
+
 
 export const sendPhoneOtpSchema = z.object({
   phone: z
@@ -61,6 +63,8 @@ export const userIdParamSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
-export type ResendVerificationEmailInput = z.infer<typeof resendVerificationEmailSchema>;
+export type ResendVerificationEmailInput = z.infer<typeof resendVerificationEmailSchema> & {
+  origin?: string;
+};
 export type SendPhoneOtpInput = z.infer<typeof sendPhoneOtpSchema>;
 export type VerifyPhoneInput = z.infer<typeof verifyPhoneSchema>;

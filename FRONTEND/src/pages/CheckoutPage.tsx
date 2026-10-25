@@ -22,13 +22,16 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import LockIcon from '@mui/icons-material/Lock';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import EmailIcon from '@mui/icons-material/Email';
 import { useAuth } from '../contexts/AuthContext';
 import MpesaModal from '../components/events/MpesaModal';
 import { formatKes, formatDate } from '../utils/format';
 import type { Cart } from '../types';
 import { colors } from '../styles/theme';
 import { bookingService } from '../services/bookingService';
+import { authService } from '../services/authService';
 import PageMeta from '../components/common/PageMeta';
+
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -41,6 +44,38 @@ export default function CheckoutPage() {
   const [reservationExpiresAt, setReservationExpiresAt] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [reserving, setReserving] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const [verificationFeedback, setVerificationFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+    directUrl?: string;
+  } | null>(null);
+
+  const handleSendVerificationEmail = async () => {
+    if (!user?.email) return;
+    setSendingVerification(true);
+    setVerificationFeedback(null);
+    try {
+      const returnUrl = window.location.pathname + window.location.search;
+      sessionStorage.setItem('vibe_verification_return_to', returnUrl);
+      const res = await authService.resendVerificationEmail({
+        email: user.email,
+        redirectUrl: returnUrl,
+      });
+      setVerificationFeedback({
+        type: 'success',
+        message: res.data?.message || res.message || `Verification link sent to ${user.email}! Please check your email.`,
+        directUrl: res.data?.verificationUrl,
+      });
+    } catch (err: any) {
+      setVerificationFeedback({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to send verification email. Please try again.',
+      });
+    } finally {
+      setSendingVerification(false);
+    }
+  };
 
 
   // Quantities state
@@ -581,6 +616,102 @@ export default function CheckoutPage() {
                 {bookingError}
               </Alert>
             )}
+
+            {!hasVerifiedContact && user && (
+              <Box
+                sx={{
+                  mb: 2.5,
+                  p: 2,
+                  borderRadius: '8px',
+                  bgcolor: 'rgba(244, 63, 94, 0.08)',
+                  border: '1px solid rgba(244, 63, 94, 0.3)',
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    color: colors.inkFg,
+                    mb: 0.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <EmailIcon sx={{ fontSize: 18, color: colors.coral }} />
+                  EMAIL VERIFICATION REQUIRED
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(250, 247, 242, 0.75)', fontSize: '0.8rem', mb: 1.5 }}>
+                  Send a verification link to <strong>{user.email}</strong>. When you click the link, you will be automatically returned to this checkout page.
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleSendVerificationEmail}
+                    disabled={sendingVerification}
+                    startIcon={sendingVerification ? <CircularProgress size={16} /> : <EmailIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      bgcolor: colors.lime,
+                      color: colors.limeFg,
+                      fontWeight: 800,
+                      fontSize: '0.82rem',
+                      textTransform: 'uppercase',
+                      py: 1,
+                      borderRadius: '6px',
+                      '&:hover': { bgcolor: colors.limeLt },
+                    }}
+                  >
+                    {sendingVerification ? 'Sending Link…' : 'Verify Email'}
+                  </Button>
+
+                  {verificationFeedback && (
+                    <Alert
+                      severity={verificationFeedback.type}
+                      sx={{
+                        fontSize: '0.78rem',
+                        py: 0.5,
+                        '& .MuiAlert-message': { width: '100%' },
+                      }}
+                    >
+                      {verificationFeedback.message}
+                      {verificationFeedback.directUrl && (
+                        <Box sx={{ mt: 1 }}>
+                          <Button
+                            component="a"
+                            href={verificationFeedback.directUrl}
+                            variant="outlined"
+                            size="small"
+                            color="inherit"
+                            sx={{ fontSize: '0.74rem', textTransform: 'none', fontWeight: 700 }}
+                          >
+                            Click here to verify directly
+                          </Button>
+                        </Box>
+                      )}
+                    </Alert>
+                  )}
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                    <Typography
+                      component={Link}
+                      to="/profile"
+                      sx={{
+                        color: colors.lime,
+                        fontSize: '0.75rem',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        '&:hover': { color: colors.limeLt },
+                      }}
+                    >
+                      Or verify phone OTP in Profile
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+
             {backendOrderId && (
               <Alert severity="info" sx={{ mb: 2 }}>
                 Reservation {backendOrderId} is unpaid and expires at{' '}
@@ -588,6 +719,7 @@ export default function CheckoutPage() {
                 No payment was taken and no tickets have been issued.
               </Alert>
             )}
+
 
             {/* Lime Action Button */}
             <Button

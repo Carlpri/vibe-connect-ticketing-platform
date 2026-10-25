@@ -7,6 +7,8 @@ export interface SendVerificationEmailParams {
   name: string;
   token: string;
   expiresInMinutes?: number;
+  redirectUrl?: string;
+  origin?: string;
 }
 
 export interface EmailDeliveryResult {
@@ -21,10 +23,23 @@ export class EmailService {
   /**
    * Generates the trusted frontend verification URL.
    */
-  static getVerificationUrl(token: string): string {
-    const baseUrl = env.FRONTEND_URL.replace(/\/$/, '');
-    return `${baseUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  static getVerificationUrl(token: string, redirectUrl?: string, origin?: string): string {
+    let baseUrl = env.FRONTEND_URL.replace(/\/$/, '');
+    if (origin) {
+      try {
+        const parsed = new URL(origin);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          baseUrl = origin.replace(/\/$/, '');
+        }
+      } catch {
+        // keep configured baseUrl
+      }
+    }
+    const cleanRedirect = redirectUrl && redirectUrl.startsWith('/') ? redirectUrl : '';
+    const redirectParam = cleanRedirect ? `&redirect=${encodeURIComponent(cleanRedirect)}` : '';
+    return `${baseUrl}/verify-email?token=${encodeURIComponent(token)}${redirectParam}`;
   }
+
 
   /**
    * Generates HTML content for the verification email.
@@ -90,8 +105,8 @@ export class EmailService {
    * Sends the verification email using Resend API (or safe mock fallback).
    */
   static async sendVerificationEmail(params: SendVerificationEmailParams): Promise<EmailDeliveryResult> {
-    const { to, name, token, expiresInMinutes = env.EMAIL_VERIFICATION_EXPIRES_MINUTES } = params;
-    const verificationUrl = this.getVerificationUrl(token);
+    const { to, name, token, expiresInMinutes = env.EMAIL_VERIFICATION_EXPIRES_MINUTES, redirectUrl, origin } = params;
+    const verificationUrl = this.getVerificationUrl(token, redirectUrl, origin);
 
     // If Resend API key is not configured or in test environment, use safe mock adapter
     if (!env.RESEND_API_KEY || env.RESEND_API_KEY.includes('your_api_key') || process.env.NODE_ENV === 'test') {

@@ -24,8 +24,15 @@ import { colors } from '../styles/theme';
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const redirectParam = searchParams.get('redirect');
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
+
+  // Redirect target resolution
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(() => {
+    return redirectParam || sessionStorage.getItem('vibe_verification_return_to');
+  });
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 
   // Verification state (when ?token is present)
   const [verifying, setVerifying] = useState(Boolean(token));
@@ -71,6 +78,14 @@ export default function VerifyEmailPage() {
         setVerifiedSuccess(true);
         setVerifiedMessage(res.message || 'Email verified successfully!');
         await refreshUser();
+
+        // Resolve return target
+        const target = redirectParam || sessionStorage.getItem('vibe_verification_return_to');
+        if (target) {
+          setRedirectTarget(target);
+          sessionStorage.removeItem('vibe_verification_return_to');
+          setRedirectCountdown(3);
+        }
       } catch (err) {
         setVerifiedSuccess(false);
         setVerifiedMessage(getApiErrorMessage(err));
@@ -80,7 +95,24 @@ export default function VerifyEmailPage() {
     }
 
     verify();
-  }, [token, refreshUser]);
+  }, [token, refreshUser, redirectParam]);
+
+  // Handle auto-redirect countdown
+  useEffect(() => {
+    if (redirectCountdown === null) return;
+    if (redirectCountdown <= 0) {
+      if (redirectTarget) {
+        navigate(redirectTarget);
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [redirectCountdown, redirectTarget, navigate]);
 
   // Handle requesting a verification link
   const handleSendLink = async (e?: React.FormEvent) => {
@@ -98,10 +130,14 @@ export default function VerifyEmailPage() {
     setDirectVerificationUrl(null);
 
     try {
-      const res = await authService.resendVerificationEmail({ email: targetEmail });
+      const returnUrl = redirectTarget || undefined;
+      const res = await authService.resendVerificationEmail({
+        email: targetEmail,
+        redirectUrl: returnUrl,
+      });
       setSendSuccess(true);
       setSendMessage(
-        res.data?.message || `A verification link has been sent to ${targetEmail}. Please check your inbox.`
+        res.data?.message || res.message || `A verification link has been sent to ${targetEmail}. Please check your inbox.`
       );
       setCooldown(60);
 
@@ -116,6 +152,7 @@ export default function VerifyEmailPage() {
       setSendingLink(false);
     }
   };
+
 
   return (
     <Box sx={{ minHeight: '85vh', display: 'grid', placeItems: 'center', py: 8, bgcolor: colors.bg }}>
@@ -198,10 +235,46 @@ export default function VerifyEmailPage() {
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {redirectTarget && (
+                  <Box
+                    sx={{
+                      p: 2,
+                      mb: 1,
+                      borderRadius: '8px',
+                      bgcolor: 'rgba(212, 245, 61, 0.12)',
+                      border: `1px solid ${colors.lime}`,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: colors.fg, mb: 0.5 }}>
+                      Verification complete!
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: colors.mutedFg, mb: 1.5, fontSize: '0.82rem' }}>
+                      Redirecting you back to your previous page in{' '}
+                      <strong>{redirectCountdown !== null ? redirectCountdown : 0}s</strong>...
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={() => navigate(redirectTarget)}
+                      sx={{
+                        py: 1.2,
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        bgcolor: colors.lime,
+                        color: colors.limeFg,
+                        borderRadius: '8px',
+                        '&:hover': { bgcolor: colors.limeLt },
+                      }}
+                    >
+                      Return to {redirectTarget.includes('checkout') ? 'Checkout' : 'Previous Page'} Now
+                    </Button>
+                  </Box>
+                )}
+
                 <Button
                   component={Link}
                   to="/my-tickets"
-                  variant="contained"
+                  variant={redirectTarget ? 'outlined' : 'contained'}
                   size="large"
                   startIcon={<ConfirmationNumberIcon />}
                   sx={{
@@ -209,14 +282,23 @@ export default function VerifyEmailPage() {
                     fontWeight: 800,
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
-                    bgcolor: colors.lime,
-                    color: colors.limeFg,
+                    ...(redirectTarget
+                      ? {
+                          borderColor: colors.border,
+                          color: colors.fg,
+                          '&:hover': { borderColor: colors.fg, bgcolor: 'transparent' },
+                        }
+                      : {
+                          bgcolor: colors.lime,
+                          color: colors.limeFg,
+                          '&:hover': { bgcolor: colors.limeLt },
+                        }),
                     borderRadius: '8px',
-                    '&:hover': { bgcolor: colors.limeLt },
                   }}
                 >
                   View My Tickets & Passes
                 </Button>
+
                 <Button
                   component={Link}
                   to="/events"

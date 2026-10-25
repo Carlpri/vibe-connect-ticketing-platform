@@ -33,14 +33,19 @@ export default function ProfilePage() {
   const handleResendEmail = async () => {
     setResendingEmail(true);
     try {
-      const res = await authService.resendVerificationEmail({ email: user.email });
-      toast.success(res.message || 'Verification email sent! Check your inbox.');
+      const returnUrl = sessionStorage.getItem('vibe_verification_return_to') || undefined;
+      const res = await authService.resendVerificationEmail({
+        email: user.email,
+        redirectUrl: returnUrl,
+      });
+      toast.success(res.data?.message || res.message || 'Verification email sent! Check your inbox.');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to resend verification email.');
     } finally {
       setResendingEmail(false);
     }
   };
+
 
   const handleSendPhoneOtp = async () => {
     setSendingOtp(true);

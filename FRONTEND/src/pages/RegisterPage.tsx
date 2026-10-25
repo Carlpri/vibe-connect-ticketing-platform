@@ -310,6 +310,8 @@ export default function RegisterPage() {
                           onClick={() => setShowPassword(!showPassword)}
                           edge="end"
                           size="small"
+                          tabIndex={-1}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
                           sx={{ color: colors.mutedFg }}
                         >
                           {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}

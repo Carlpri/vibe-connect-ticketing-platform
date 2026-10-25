@@ -316,13 +316,15 @@ export class AuthService {
       to: user.email,
       name: user.name,
       token: rawToken,
+      redirectUrl: input.redirectUrl,
+      origin: input.origin,
     });
 
     if (!emailResult.success) {
       throw new AppError('Failed to send verification email. Please try again later.', 502);
     }
 
-    const verificationUrl = EmailService.getVerificationUrl(rawToken);
+    const verificationUrl = EmailService.getVerificationUrl(rawToken, input.redirectUrl, input.origin);
 
     return {
       sent: true,
@@ -331,6 +333,7 @@ export class AuthService {
         : 'Verification email sent successfully.',
       verificationUrl: emailResult.isMocked || env.NODE_ENV !== 'production' ? verificationUrl : undefined,
     };
+
   }
 
   /**
