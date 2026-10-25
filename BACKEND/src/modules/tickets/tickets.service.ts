@@ -60,6 +60,94 @@ export class TicketsService {
     });
   }
 
+  /**
+   * Retrieve all tickets for a specific paid order.
+   * Enforces ownership: the requesting userId must own the order.
+   * Used by the Paystack callback page to display freshly-issued tickets.
+   */
+  static async getTicketsForOrder(orderId: string, userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { emailVerified: true, phoneVerified: true, name: true, email: true, phone: true },
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true, status: true },
+    });
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+    if (order.userId !== userId) {
+      throw new AppError('Forbidden: You do not have access to this order', 403);
+    }
+    if (order.status !== 'PAID') {
+      throw new AppError('Tickets are only available after payment is confirmed', 400);
+    }
+
+    const canRevealQr = user.emailVerified || user.phoneVerified;
+
+    // Ensure tickets are issued (idempotent)
+    await TicketsService.issueTicketsForPaidOrder(orderId);
+
+    const tickets = await prisma.ticket.findMany({
+      where: { orderId },
+      include: {
+        ticketType: { select: { id: true, name: true, priceKes: true } },
+        event: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            startsAt: true,
+            venue: true,
+            city: true,
+            coverImage: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            paidAt: true,
+            payments: {
+              where: { status: 'SUCCESS' },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+              select: { reference: true, mpesaReceiptNumber: true, phoneNumber: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return {
+      verificationRequired: !canRevealQr,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      tickets: tickets.map((t) => ({
+        id: t.id,
+        orderId: t.orderId,
+        serialNumber: t.serialNumber,
+        status: t.status,
+        checkedInAt: t.checkedInAt,
+        ticketType: t.ticketType,
+        event: t.event,
+        paidAt: t.order.paidAt,
+        paymentRef: t.order.payments[0]?.reference ?? t.order.payments[0]?.mpesaReceiptNumber ?? null,
+        attendeePhone: t.order.payments[0]?.phoneNumber ?? user.phone,
+        holderName: user.name,
+        holderEmail: user.email,
+        qrPayload: canRevealQr && t.status !== TicketStatus.VOID ? buildTicketQrPayload(t.id) : null,
+      })),
+    };
+  }
+
   static async getMyTickets(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },

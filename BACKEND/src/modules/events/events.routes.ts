@@ -8,6 +8,8 @@ import {
   listEventsQuerySchema,
   managedEventsQuerySchema,
   eventIdParamSchema,
+  uploadFlyerSchema,
+  reorderFlyersSchema,
 } from './events.schemas';
 
 // ===========================================
@@ -75,6 +77,50 @@ router.put(
   validateParams(eventIdParamSchema),
   validateBody(updateEventSchema),
   EventsController.updateEvent
+);
+
+// Upload standalone flyer (before event creation)
+router.post(
+  '/upload-flyer',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  validateBody(uploadFlyerSchema),
+  EventsController.uploadStandaloneFlyer
+);
+
+// Get event flyers
+router.get(
+  '/:id/flyers',
+  validateParams(eventIdParamSchema),
+  EventsController.getEventFlyers
+);
+
+// Upload & attach flyer to existing event
+router.post(
+  '/:id/flyers',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  validateParams(eventIdParamSchema),
+  validateBody(uploadFlyerSchema),
+  EventsController.uploadEventFlyer
+);
+
+// Reorder flyers for an event
+router.put(
+  '/:id/flyers/reorder',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  validateParams(eventIdParamSchema),
+  validateBody(reorderFlyersSchema),
+  EventsController.reorderFlyers
+);
+
+// Delete flyer from an event
+router.delete(
+  '/:id/flyers/:flyerId',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  EventsController.deleteFlyer
 );
 
 // Cancel / delete event

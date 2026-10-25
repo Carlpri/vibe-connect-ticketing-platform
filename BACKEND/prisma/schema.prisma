@@ -78,9 +78,11 @@ model User {
   passwordResetExpiresAt         DateTime? @db.Timestamptz
   passwordResetCooldownUntil     DateTime? @db.Timestamptz
 
-  orders  Order[]
-  events  Event[]
-  tickets Ticket[]
+  orders            Order[]
+  events            Event[]
+  tickets           Ticket[]
+  promoCodesCreated PromoCode[]
+  promoCodeUsages   PromoCodeUsage[]
 
   @@index([emailVerificationTokenHash])
   @@index([passwordResetTokenHash])
@@ -126,6 +128,8 @@ model Event {
   address     String?
   latitude    Float?
   longitude   Float?
+  placeId     String?
+  directions  String?
 
   // Online Details (for ONLINE or HYBRID events)
   onlineUrl   String?
@@ -136,6 +140,9 @@ model Event {
   organizer   User        @relation(fields: [organizerId], references: [id])
   ticketTypes TicketType[]
   tickets     Ticket[]
+  flyers      EventFlyer[]
+  orders      Order[]
+  promoCodes  PromoCode[]
 
   @@index([status, startsAt])
   @@index([category, status])
@@ -179,25 +186,36 @@ enum OrderStatus {
 }
 
 model Order {
-  id        String      @id @default(uuid()) @db.Uuid
-  userId    String      @db.Uuid
-  eventId   String      @db.Uuid
-  status    OrderStatus @default(PENDING)
-  totalKes  Int
-  expiresAt DateTime    @db.Timestamptz
-  paidAt    DateTime?   @db.Timestamptz
-  createdAt DateTime    @default(now()) @db.Timestamptz
-  updatedAt DateTime    @updatedAt @db.Timestamptz
+  id                    String      @id @default(uuid()) @db.Uuid
+  userId                String      @db.Uuid
+  eventId               String      @db.Uuid
+  status                OrderStatus @default(PENDING)
+  totalKes              Int
+  subtotalKes           Int         @default(0)
+  discountKes           Int         @default(0)
+  serviceFeeKes         Int         @default(0)
+  promoCodeId           String?     @db.Uuid
+  promoCodeSnapshot     String?
+  discountTypeSnapshot  String?
+  discountValueSnapshot Int?
+  influencerSnapshot    String?
+  expiresAt             DateTime    @db.Timestamptz
+  paidAt                DateTime?   @db.Timestamptz
+  createdAt             DateTime    @default(now()) @db.Timestamptz
+  updatedAt             DateTime    @updatedAt @db.Timestamptz
 
-  user User @relation(fields: [userId], references: [id])
-
-  items    OrderItem[]
-  payments Payment[]
-  tickets  Ticket[]
+  user      User             @relation(fields: [userId], references: [id])
+  event     Event            @relation(fields: [eventId], references: [id])
+  promoCode PromoCode?       @relation(fields: [promoCodeId], references: [id])
+  usages    PromoCodeUsage[]
+  items     OrderItem[]
+  payments  Payment[]
+  tickets   Ticket[]
 
   @@index([userId, createdAt])
   @@index([eventId, status])
   @@index([status, expiresAt])
+  @@index([promoCodeId])
   @@map("orders")
 }
 
@@ -285,5 +303,85 @@ model Payment {
   @@index([orderId])
   @@index([reference])
   @@map("payments")
+}
+
+model EventFlyer {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @db.Uuid
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, order])
+  @@map("event_flyers")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model PromoCode {
+  id                 String       @id @default(uuid()) @db.Uuid
+  code               String
+  eventId            String?      @db.Uuid
+  createdByUserId    String       @db.Uuid
+  influencerName     String?
+  influencerEmail    String?
+  discountType       DiscountType @default(PERCENTAGE)
+  discountValue      Int
+  startsAt           DateTime?    @db.Timestamptz
+  expiresAt          DateTime?    @db.Timestamptz
+  maxUses            Int?
+  maxUsesPerCustomer Int?         @default(1)
+  currentUses        Int          @default(0)
+  minOrderKes        Int?         @default(0)
+  isActive           Boolean      @default(true)
+  notes              String?
+  createdAt          DateTime     @default(now()) @db.Timestamptz
+  updatedAt          DateTime     @updatedAt @db.Timestamptz
+
+  event              Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdByUser      User             @relation(fields: [createdByUserId], references: [id])
+  orders             Order[]
+  usages             PromoCodeUsage[]
+
+  @@unique([code, eventId])
+  @@index([code])
+  @@index([eventId, isActive])
+  @@index([createdByUserId])
+  @@map("promo_codes")
+}
+
+model PromoCodeUsage {
+  id          String   @id @default(uuid()) @db.Uuid
+  promoCodeId String   @db.Uuid
+  orderId     String   @db.Uuid
+  userId      String   @db.Uuid
+  discountKes Int
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([promoCodeId, orderId])
+  @@index([promoCodeId])
+  @@index([userId])
+  @@map("promo_code_usages")
+}
+
+model PlatformConfig {
+  id                 String   @id @default("default")
+  serviceFeePercent  Float    @default(5.0)
+  serviceFeeFixedKes Int      @default(50)
+  serviceFeePolicy   String   @default("CUSTOMER_SURCHARGE")
+  updatedAt          DateTime @updatedAt @db.Timestamptz
+  updatedByUserId    String?  @db.Uuid
+
+  @@map("platform_config")
 }
 

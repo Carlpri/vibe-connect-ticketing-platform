@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -14,12 +14,17 @@ import {
   Alert,
   CircularProgress,
   Tooltip,
+  LinearProgress,
+  Chip,
 } from '@mui/material';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import toast from 'react-hot-toast';
 
 import { eventService } from '../services/eventService';
@@ -117,6 +122,13 @@ export default function CreateEventPage() {
   const [latitude, setLatitude] = useState<number | string>(-1.2587);
   const [longitude, setLongitude] = useState<number | string>(36.7997);
   const [onlineUrl, setOnlineUrl] = useState('');
+  const [placeId, setPlaceId] = useState('');
+  const [directions, setDirections] = useState('');
+
+  // Flyer Gallery (up to 10 flyers)
+  const [flyers, setFlyers] = useState<Array<{ dataUrl: string; preview: string; id?: string }>>([]);
+  const [flyerUploading, setFlyerUploading] = useState(false);
+  const flyerInputRef = useRef<HTMLInputElement>(null);
 
   // Ticket Tiers
   const [ticketTypes, setTicketTypes] = useState<CreateTicketTypeInput[]>([
@@ -163,6 +175,11 @@ export default function CreateEventPage() {
         setLatitude(event.latitude ?? '');
         setLongitude(event.longitude ?? '');
         setOnlineUrl(event.onlineUrl || '');
+        setPlaceId((event as any).placeId || '');
+        setDirections((event as any).directions || '');
+        if (event.flyers && event.flyers.length > 0) {
+          setFlyers(event.flyers.map((f) => ({ dataUrl: '', preview: f.url, id: f.id })));
+        }
       } catch (err: unknown) {
         if (!cancelled) {
           setError(getApiErrorMessage(err));
@@ -210,6 +227,66 @@ export default function CreateEventPage() {
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
+  };
+
+  const handleFlyerFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (flyers.length + files.length > 10) {
+      toast.error('Maximum 10 flyers allowed');
+      return;
+    }
+    if (files.length === 0) return;
+    setFlyerUploading(true);
+    let pending = files.length;
+    files.forEach((file) => {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error(`${file.name}: only JPEG, PNG, or WebP allowed`);
+        pending -= 1;
+        if (pending === 0) setFlyerUploading(false);
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name}: max 5 MB per flyer`);
+        pending -= 1;
+        if (pending === 0) setFlyerUploading(false);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        setFlyers((prev) => [...prev, { dataUrl, preview: dataUrl }]);
+        pending -= 1;
+        if (pending === 0) setFlyerUploading(false);
+      };
+      reader.onerror = () => {
+        pending -= 1;
+        if (pending === 0) setFlyerUploading(false);
+      };
+      reader.readAsDataURL(file);
+    });
+    if (flyerInputRef.current) flyerInputRef.current.value = '';
+  };
+
+  const moveFlyerUp = (index: number) => {
+    if (index === 0) return;
+    setFlyers((prev) => {
+      const arr = [...prev];
+      [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
+      return arr;
+    });
+  };
+
+  const moveFlyerDown = (index: number) => {
+    setFlyers((prev) => {
+      if (index >= prev.length - 1) return prev;
+      const arr = [...prev];
+      [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+      return arr;
+    });
+  };
+
+  const removeFlyer = (index: number) => {
+    setFlyers((prev) => prev.filter((_, i) => i !== index));
   };
 
   const applyVenuePreset = (preset: typeof VENUE_PRESETS[0]) => {
@@ -281,6 +358,8 @@ export default function CreateEventPage() {
         format !== 'ONLINE' && latitude !== '' ? Number(latitude) : undefined,
       longitude:
         format !== 'ONLINE' && longitude !== '' ? Number(longitude) : undefined,
+      placeId: format !== 'ONLINE' && placeId.trim() ? placeId.trim() : undefined,
+      directions: format !== 'ONLINE' && directions.trim() ? directions.trim() : undefined,
       onlineUrl: format !== 'PHYSICAL' ? onlineUrl.trim() : undefined,
       ticketTypes: ticketTypes.map((t) => ({
         name: t.name.trim(),
@@ -289,6 +368,9 @@ export default function CreateEventPage() {
         capacity: Number(t.capacity),
         isActive: true,
       })),
+      flyers: flyers
+        .filter((f) => f.dataUrl)
+        .map((f, i) => ({ url: f.dataUrl, order: i })),
     };
 
     setSubmitting(true);
@@ -687,6 +769,17 @@ export default function CreateEventPage() {
                       helperText="Used for the 'Get Directions' Google Maps button"
                     />
                   </Box>
+
+                  <TextField
+                    label="Custom Directions / Landmarks"
+                    fullWidth
+                    multiline
+                    rows={2}
+                    value={directions}
+                    onChange={(e) => setDirections(e.target.value)}
+                    placeholder="e.g. Enter via Gate 2 on Langata Rd. Parking available on the right."
+                    helperText="Optional turn-by-turn guidance or landmark hints shown on event detail page"
+                  />
                 </Box>
               </Card>
             )}
@@ -720,6 +813,168 @@ export default function CreateEventPage() {
                 />
               </Card>
             )}
+
+            {/* Flyer Gallery */}
+            <Card
+              sx={{
+                p: { xs: 2.5, md: 3.5 },
+                bgcolor: colors.cardBg,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '12px',
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                <Box>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontFamily: '"Archivo Black", sans-serif',
+                      textTransform: 'uppercase',
+                      color: colors.fg,
+                    }}
+                  >
+                    Event Flyers & Promotional Images
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: colors.mutedFg }}>
+                    Upload up to 10 flyers (JPEG, PNG, WebP — max 5 MB each). First image shown as hero.
+                  </Typography>
+                </Box>
+                <Chip
+                  label={`${flyers.length} / 10 flyers`}
+                  size="small"
+                  sx={{
+                    bgcolor: flyers.length >= 10 ? 'error.main' : colors.accent,
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                  }}
+                />
+              </Box>
+
+              {flyerUploading && <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />}
+
+              {/* Hidden file input */}
+              <input
+                ref={flyerInputRef}
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={handleFlyerFilePick}
+              />
+
+              {/* Flyer thumbnails */}
+              {flyers.length > 0 && (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+                    gap: 1.5,
+                    mb: 2,
+                  }}
+                >
+                  {flyers.map((flyer, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        position: 'relative',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: `2px solid ${idx === 0 ? colors.accent : colors.border}`,
+                        aspectRatio: '3/4',
+                        bgcolor: colors.border,
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={flyer.preview}
+                        alt={`Flyer ${idx + 1}`}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      {idx === 0 && (
+                        <Chip
+                          label="HERO"
+                          size="small"
+                          sx={{
+                            position: 'absolute',
+                            top: 6,
+                            left: 6,
+                            bgcolor: colors.accent,
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: '0.6rem',
+                            height: 20,
+                          }}
+                        />
+                      )}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          gap: 0.5,
+                          p: 0.5,
+                          bgcolor: 'rgba(0,0,0,0.6)',
+                        }}
+                      >
+                        <Tooltip title="Move up">
+                          <span>
+                            <IconButton
+                              size="small"
+                              disabled={idx === 0}
+                              onClick={() => moveFlyerUp(idx)}
+                              sx={{ color: '#fff', p: 0.25 }}
+                            >
+                              <KeyboardArrowUpIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Move down">
+                          <span>
+                            <IconButton
+                              size="small"
+                              disabled={idx === flyers.length - 1}
+                              onClick={() => moveFlyerDown(idx)}
+                              sx={{ color: '#fff', p: 0.25 }}
+                            >
+                              <KeyboardArrowDownIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Remove flyer">
+                          <IconButton
+                            size="small"
+                            onClick={() => removeFlyer(idx)}
+                            sx={{ color: '#ff6b6b', p: 0.25 }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              <Button
+                variant="outlined"
+                startIcon={<CloudUploadIcon />}
+                disabled={flyers.length >= 10}
+                onClick={() => flyerInputRef.current?.click()}
+                sx={{
+                  borderColor: colors.accent,
+                  color: colors.accent,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  '&:hover': { bgcolor: `${colors.accent}15` },
+                }}
+              >
+                {flyers.length === 0 ? 'Choose Flyer Images' : 'Add More Flyers'}
+              </Button>
+            </Card>
 
             {/* Section 4: Ticket Tiers (create only) */}
             {!isEditMode && (

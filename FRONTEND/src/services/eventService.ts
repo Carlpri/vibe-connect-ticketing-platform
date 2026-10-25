@@ -183,4 +183,45 @@ export const eventService = {
     const res = await apiClient.delete<ApiSuccessResponse<void>>(`/events/${id}`);
     return res.data;
   },
+
+  /**
+   * POST /api/events/upload-flyer
+   * Upload standalone flyer before event creation
+   */
+  async uploadStandaloneFlyer(dataUrl: string): Promise<ApiSuccessResponse<{ url: string }>> {
+    const res = await apiClient.post<ApiSuccessResponse<{ url: string }>>('/events/upload-flyer', { dataUrl });
+    return res.data;
+  },
+
+  /**
+   * GET /api/events/:id/flyers
+   */
+  async getEventFlyers(eventId: string): Promise<ApiSuccessResponse<Array<{ id: string; url: string; order: number }>>> {
+    const res = await apiClient.get<ApiSuccessResponse<Array<{ id: string; url: string; order: number }>>>(`/events/${eventId}/flyers`);
+    return res.data;
+  },
+
+  /**
+   * POST /api/events/:id/flyers
+   */
+  async uploadEventFlyer(eventId: string, dataUrl: string, order?: number): Promise<ApiSuccessResponse<any>> {
+    const res = await apiClient.post<ApiSuccessResponse<any>>(`/events/${eventId}/flyers`, { dataUrl, order });
+    return res.data;
+  },
+
+  /**
+   * PUT /api/events/:id/flyers/reorder
+   */
+  async reorderEventFlyers(eventId: string, flyerIds: string[]): Promise<ApiSuccessResponse<any>> {
+    const res = await apiClient.put<ApiSuccessResponse<any>>(`/events/${eventId}/flyers/reorder`, { flyerIds });
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/events/:id/flyers/:flyerId
+   */
+  async deleteEventFlyer(eventId: string, flyerId: string): Promise<ApiSuccessResponse<void>> {
+    const res = await apiClient.delete<ApiSuccessResponse<void>>(`/events/${eventId}/flyers/${flyerId}`);
+    return res.data;
+  },
 };

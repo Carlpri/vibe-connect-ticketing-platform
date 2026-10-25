@@ -132,3 +132,28 @@ export const requireAtLeastOneVerified = async (
 
   next();
 };
+
+/**
+ * Optional authentication middleware: if Authorization header is present and valid,
+ * populates req.user. If absent or invalid, proceeds without error.
+ */
+export const optionalAuthenticate = (
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+    req.user = decoded;
+  } catch {
+    // Proceed unauthenticated if token is malformed/expired
+  }
+  next();
+};
+

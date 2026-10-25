@@ -3,6 +3,7 @@ import { AppError } from '../../shared/errors/AppError';
 import { CreateEventInput, UpdateEventInput, ListEventsQuery } from './events.schemas';
 import { TokenPayload, UserRole } from '../../shared/types';
 import { Prisma } from '@prisma/client';
+import { parseAndValidateBase64Image, saveImageToUploads } from '../../shared/utils/imageUpload';
 
 /**
  * Transforms a Prisma event (with nested organizer and sold counts) into the
@@ -10,10 +11,16 @@ import { Prisma } from '@prisma/client';
  * each ticketType gaining a computed `available` field.
  */
 function formatEventForClient(event: any) {
-  const { organizer, ticketTypes, ...rest } = event;
+  const { organizer, ticketTypes, flyers, ...rest } = event;
   return {
     ...rest,
     organizerName: organizer?.name ?? null,
+    flyers: (flyers ?? []).map((f: any) => ({
+      id: f.id,
+      url: f.url,
+      order: f.order,
+      createdAt: f.createdAt,
+    })),
     ticketTypes: (ticketTypes ?? []).map((t: any) => ({
       ...t,
       available: Math.max(0, (t.capacity ?? 0) - (t.sold ?? 0)),
@@ -107,6 +114,8 @@ export class EventsService {
     const organizerId = user.userId;
     const slug = await this.generateUniqueSlug(input.title, input.slug);
 
+    const initialCover = input.coverImage || (input.flyers && input.flyers[0]) || null;
+
     const event = await prisma.event.create({
       data: {
         organizerId,
@@ -114,7 +123,7 @@ export class EventsService {
         slug,
         description: input.description,
         category: input.category,
-        coverImage: input.coverImage || null,
+        coverImage: initialCover,
         format: input.format,
         status: input.status,
         startsAt: new Date(input.startsAt),
@@ -125,7 +134,15 @@ export class EventsService {
         address: input.address || null,
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
+        placeId: input.placeId || null,
+        directions: input.directions || null,
         onlineUrl: input.onlineUrl || null,
+        flyers: input.flyers && input.flyers.length > 0 ? {
+          create: input.flyers.slice(0, 10).map((url, idx) => ({
+            url,
+            order: idx,
+          })),
+        } : undefined,
         ticketTypes: {
           create: input.ticketTypes.map((ticket) => ({
             name: ticket.name,
@@ -142,6 +159,9 @@ export class EventsService {
       include: {
         ticketTypes: {
           orderBy: { priceKes: 'asc' },
+        },
+        flyers: {
+          orderBy: { order: 'asc' },
         },
         organizer: {
           select: {
@@ -200,6 +220,9 @@ export class EventsService {
             where: { isActive: true },
             orderBy: { priceKes: 'asc' },
           },
+          flyers: {
+            orderBy: { order: 'asc' },
+          },
           organizer: {
             select: {
               id: true,
@@ -247,6 +270,9 @@ export class EventsService {
           ticketTypes: {
             orderBy: { priceKes: 'asc' },
           },
+          flyers: {
+            orderBy: { order: 'asc' },
+          },
           organizer: {
             select: { id: true, name: true },
           },
@@ -278,6 +304,9 @@ export class EventsService {
       include: {
         ticketTypes: {
           orderBy: { priceKes: 'asc' },
+        },
+        flyers: {
+          orderBy: { order: 'asc' },
         },
         organizer: {
           select: {
@@ -344,13 +373,37 @@ export class EventsService {
       throw new AppError('Event end time must be after start time', 400);
     }
 
+    // Handle flyers if supplied in update
+    if (input.flyers) {
+      if (input.flyers.length > 10) {
+        throw new AppError('An event can have a maximum of 10 promotional flyers', 400);
+      }
+      await prisma.$transaction(async (tx) => {
+        await tx.eventFlyer.deleteMany({ where: { eventId: id } });
+        if (input.flyers && input.flyers.length > 0) {
+          await tx.eventFlyer.createMany({
+            data: input.flyers.map((url, idx) => ({
+              eventId: id,
+              url,
+              order: idx,
+            })),
+          });
+        }
+      });
+    }
+
+    const updatedCover =
+      input.coverImage === ''
+        ? null
+        : input.coverImage || (input.flyers && input.flyers[0]) || existing.coverImage;
+
     const updated = await prisma.event.update({
       where: { id },
       data: {
         title: input.title,
         description: input.description,
         category: input.category,
-        coverImage: input.coverImage === '' ? null : input.coverImage,
+        coverImage: updatedCover,
         format: input.format,
         status: input.status,
         startsAt,
@@ -361,10 +414,13 @@ export class EventsService {
         address: input.address,
         latitude: input.latitude,
         longitude: input.longitude,
+        placeId: input.placeId,
+        directions: input.directions,
         onlineUrl: input.onlineUrl === '' ? null : input.onlineUrl,
       },
       include: {
         ticketTypes: true,
+        flyers: { orderBy: { order: 'asc' } },
         organizer: {
           select: { id: true, name: true, email: true },
         },
@@ -418,5 +474,158 @@ export class EventsService {
       action: 'CANCELLED',
       message: 'Event cancelled successfully.',
     };
+  }
+
+  /**
+   * Uploads and saves a standalone flyer image (validating size and magic bytes).
+   */
+  static async uploadStandaloneFlyer(dataUrl: string) {
+    const validatedImage = parseAndValidateBase64Image(dataUrl);
+    const url = await saveImageToUploads(validatedImage, 'flyers');
+    return { url };
+  }
+
+  /**
+   * Uploads and attaches a flyer to a specific event.
+   */
+  static async uploadEventFlyer(
+    eventId: string,
+    user: TokenPayload,
+    input: { dataUrl?: string; url?: string; order?: number }
+  ) {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { flyers: true },
+    });
+    if (!event) throw new AppError('Event not found', 404);
+    if (user.role !== 'ADMIN' && event.organizerId !== user.userId) {
+      throw new AppError('Forbidden: You do not have permission to manage flyers for this event', 403);
+    }
+    if (event.flyers.length >= 10) {
+      throw new AppError('Maximum limit of 10 flyers reached for this event', 400);
+    }
+
+    let flyerUrl = input.url;
+    if (input.dataUrl) {
+      const validatedImage = parseAndValidateBase64Image(input.dataUrl);
+      flyerUrl = await saveImageToUploads(validatedImage, 'flyers');
+    }
+    if (!flyerUrl) {
+      throw new AppError('Flyer image is required', 400);
+    }
+
+    const nextOrder =
+      input.order ??
+      (event.flyers.length > 0 ? Math.max(...event.flyers.map((f) => f.order)) + 1 : 0);
+
+    const flyer = await prisma.eventFlyer.create({
+      data: {
+        eventId,
+        url: flyerUrl,
+        order: nextOrder,
+      },
+    });
+
+    if (!event.coverImage) {
+      await prisma.event.update({
+        where: { id: eventId },
+        data: { coverImage: flyerUrl },
+      });
+    }
+
+    return flyer;
+  }
+
+  /**
+   * Retrieves all flyers for an event ordered by priority.
+   */
+  static async getEventFlyers(eventId: string, user?: TokenPayload) {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        flyers: { orderBy: { order: 'asc' } },
+      },
+    });
+    if (!event) throw new AppError('Event not found', 404);
+    if (event.status !== 'PUBLISHED') {
+      const isOwner = user && user.userId === event.organizerId;
+      const isAdmin = user && user.role === 'ADMIN';
+      if (!isOwner && !isAdmin) {
+        throw new AppError('Event not found', 404);
+      }
+    }
+    return event.flyers;
+  }
+
+  /**
+   * Reorders flyers for an event.
+   */
+  static async reorderFlyers(eventId: string, user: TokenPayload, flyerIds: string[]) {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { flyers: true },
+    });
+    if (!event) throw new AppError('Event not found', 404);
+    if (user.role !== 'ADMIN' && event.organizerId !== user.userId) {
+      throw new AppError('Forbidden: You do not have permission to manage flyers for this event', 403);
+    }
+
+    const eventFlyerIds = new Set(event.flyers.map((f) => f.id));
+    for (const id of flyerIds) {
+      if (!eventFlyerIds.has(id)) {
+        throw new AppError(`Flyer ${id} does not belong to this event`, 400);
+      }
+    }
+
+    await prisma.$transaction(
+      flyerIds.map((id, index) =>
+        prisma.eventFlyer.update({
+          where: { id },
+          data: { order: index },
+        })
+      )
+    );
+
+    const firstFlyer = event.flyers.find((f) => f.id === flyerIds[0]);
+    if (firstFlyer) {
+      await prisma.event.update({
+        where: { id: eventId },
+        data: { coverImage: firstFlyer.url },
+      });
+    }
+
+    return prisma.eventFlyer.findMany({
+      where: { eventId },
+      orderBy: { order: 'asc' },
+    });
+  }
+
+  /**
+   * Deletes a flyer from an event.
+   */
+  static async deleteFlyer(eventId: string, flyerId: string, user: TokenPayload) {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { flyers: { orderBy: { order: 'asc' } } },
+    });
+    if (!event) throw new AppError('Event not found', 404);
+    if (user.role !== 'ADMIN' && event.organizerId !== user.userId) {
+      throw new AppError('Forbidden: You do not have permission to manage flyers for this event', 403);
+    }
+
+    const flyer = event.flyers.find((f) => f.id === flyerId);
+    if (!flyer) throw new AppError('Flyer not found', 404);
+
+    await prisma.eventFlyer.delete({ where: { id: flyerId } });
+
+    const remainingFlyers = event.flyers.filter((f) => f.id !== flyerId);
+    if (event.coverImage === flyer.url) {
+      await prisma.event.update({
+        where: { id: eventId },
+        data: { coverImage: remainingFlyers[0]?.url || null },
+      });
+    }
+
+    return { message: 'Flyer deleted successfully', remainingCount: remainingFlyers.length };
   }
 }

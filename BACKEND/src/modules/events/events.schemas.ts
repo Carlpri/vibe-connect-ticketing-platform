@@ -48,6 +48,11 @@ export const createEventSchema = z.object({
   address: z.string().trim().max(300).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  placeId: z.string().trim().max(200).optional(),
+  directions: z.string().trim().max(500).optional(),
+
+  // Promotional flyers (up to 10)
+  flyers: z.array(z.string()).max(10, 'Maximum 10 flyers per event').optional(),
 
   // Online location details
   onlineUrl: z.string().url('Online meeting link must be a valid URL').optional().or(z.literal('')),
@@ -77,7 +82,7 @@ export const updateEventSchema = z.object({
   title: z.string().trim().min(3).max(200).optional(),
   description: z.string().trim().min(10).optional(),
   category: z.string().trim().min(2).optional(),
-  coverImage: z.string().url().optional().or(z.literal('')),
+  coverImage: z.string().optional().or(z.literal('')),
   format: eventFormatSchema.optional(),
   status: eventStatusSchema.optional(),
   startsAt: z.string().datetime().optional(),
@@ -88,7 +93,22 @@ export const updateEventSchema = z.object({
   address: z.string().trim().max(300).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  placeId: z.string().trim().max(200).optional(),
+  directions: z.string().trim().max(500).optional(),
+  flyers: z.array(z.string()).max(10, 'Maximum 10 flyers per event').optional(),
   onlineUrl: z.string().url().optional().or(z.literal('')),
+});
+
+export const uploadFlyerSchema = z.object({
+  dataUrl: z.string().min(1, 'Image data is required').optional(),
+  url: z.string().min(1, 'Flyer URL is required').optional(),
+  order: z.number().int().min(0).optional(),
+}).refine((data) => data.dataUrl || data.url, {
+  message: 'Either dataUrl (base64 image) or url is required',
+});
+
+export const reorderFlyersSchema = z.object({
+  flyerIds: z.array(z.string().uuid('Invalid flyer ID')).min(1, 'At least one flyer ID is required'),
 });
 
 export const listEventsQuerySchema = z.object({

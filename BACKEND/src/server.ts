@@ -11,11 +11,16 @@ import eventsRoutes from './modules/events/events.routes';
 import ordersRoutes from './modules/orders/orders.routes';
 import ticketsRoutes from './modules/tickets/tickets.routes';
 import paymentsRoutes from './modules/payments/payments.routes';
+import promoCodesRoutes from './modules/promo-codes/promo-codes.routes';
+import analyticsRoutes from './modules/analytics/analytics.routes';
+import adminRoutes from './modules/admin/admin.routes';
+
+import path from 'path';
 
 const app = express();
 
 // Security and utility middleware
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(
   cors({
     origin: '*',                                          // Allow all origins
@@ -27,11 +32,15 @@ app.use(
 // Preserve rawBody buffer for payment webhook signature validation
 app.use(
   express.json({
+    limit: '15mb',
     verify: (req: any, _res, buf) => {
       req.rawBody = buf;
     },
   })
 );
+
+// Serve uploaded event media statically
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // API Root & Health Check
 app.get('/', (_req, res) => {
@@ -64,6 +73,9 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/promo-codes', promoCodesRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 Route Handler
 app.use((req, res) => {

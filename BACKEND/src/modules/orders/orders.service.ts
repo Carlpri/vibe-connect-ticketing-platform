@@ -100,8 +100,77 @@ export class OrdersService {
             };
           });
 
-          const serviceFeeKes = subtotalKes > 0 ? 50 : 0;
-          const totalKes = subtotalKes + serviceFeeKes;
+          // Check for optional promo code discount
+          let discountKes = 0;
+          let promoCodeRecord: any = null;
+
+          if (input.promoCode) {
+            const normalizedCode = input.promoCode.trim().toUpperCase();
+            const promo = await tx.promoCode.findFirst({
+              where: {
+                code: normalizedCode,
+                OR: [{ eventId: input.eventId }, { eventId: null }],
+              },
+            });
+
+            if (!promo) {
+              throw new AppError(`Promo code '${normalizedCode}' is not valid for this event`, 404);
+            }
+            if (!promo.isActive) {
+              throw new AppError(`Promo code '${normalizedCode}' is inactive or has been disabled`, 400);
+            }
+            if (promo.startsAt && promo.startsAt > now) {
+              throw new AppError(`Promo code '${normalizedCode}' is not yet active`, 400);
+            }
+            if (promo.expiresAt && promo.expiresAt <= now) {
+              throw new AppError(`Promo code '${normalizedCode}' has expired`, 400);
+            }
+            if (promo.maxUses !== null && promo.currentUses >= promo.maxUses) {
+              throw new AppError(`Promo code '${normalizedCode}' has reached its maximum total uses`, 400);
+            }
+            if (promo.minOrderKes && subtotalKes < promo.minOrderKes) {
+              throw new AppError(
+                `Promo code requires a minimum order subtotal of KES ${promo.minOrderKes.toLocaleString()}`,
+                400
+              );
+            }
+            if (promo.maxUsesPerCustomer) {
+              const userUsageCount = await tx.promoCodeUsage.count({
+                where: { promoCodeId: promo.id, userId },
+              });
+              if (userUsageCount >= promo.maxUsesPerCustomer) {
+                throw new AppError(
+                  `You have already used promo code '${normalizedCode}' the maximum allowed times`,
+                  400
+                );
+              }
+            }
+
+            if (promo.discountType === 'PERCENTAGE') {
+              discountKes = Math.round((subtotalKes * promo.discountValue) / 100);
+            } else {
+              discountKes = Math.min(promo.discountValue, subtotalKes);
+            }
+            discountKes = Math.min(discountKes, subtotalKes);
+            promoCodeRecord = promo;
+          }
+
+          // Service Fee Calculation via PlatformConfig
+          const config = await tx.platformConfig.findUnique({
+            where: { id: 'default' },
+          });
+
+          const feePolicy = config?.serviceFeePolicy ?? 'CUSTOMER_SURCHARGE';
+          let serviceFeeKes = 0;
+
+          if (feePolicy === 'CUSTOMER_SURCHARGE' && subtotalKes > 0) {
+            const feePercent = config?.serviceFeePercent ?? 0;
+            const feeFixed = config?.serviceFeeFixedKes ?? 50;
+            const discountedAmount = Math.max(0, subtotalKes - discountKes);
+            serviceFeeKes = Math.round(discountedAmount * (feePercent / 100)) + feeFixed;
+          }
+
+          const totalKes = Math.max(0, subtotalKes - discountKes + serviceFeeKes);
           if (totalKes > 2_147_483_647) {
             throw new AppError('Order total exceeds the supported amount', 400);
           }
@@ -111,11 +180,19 @@ export class OrdersService {
             data: {
               userId,
               eventId: input.eventId,
+              subtotalKes,
+              discountKes,
+              serviceFeeKes,
               totalKes,
+              promoCodeId: promoCodeRecord?.id ?? null,
+              promoCodeSnapshot: promoCodeRecord?.code ?? null,
+              discountTypeSnapshot: promoCodeRecord?.discountType ?? null,
+              discountValueSnapshot: promoCodeRecord?.discountValue ?? null,
+              influencerSnapshot: promoCodeRecord?.influencerName ?? null,
               expiresAt,
               items: { create: items },
             },
-            include: { items: true },
+            include: { items: true, promoCode: true },
           });
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       } catch (error) {
@@ -139,6 +216,12 @@ export class OrdersService {
     const orders = await prisma.order.findMany({
       where: { userId },
       include: {
+        event: {
+          select: { id: true, title: true, slug: true, city: true, venue: true, startsAt: true },
+        },
+        promoCode: {
+          select: { code: true, discountType: true, discountValue: true, influencerName: true },
+        },
         items: true,
         payments: {
           orderBy: { createdAt: 'desc' },
@@ -173,6 +256,12 @@ export class OrdersService {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        event: {
+          select: { id: true, title: true, slug: true, city: true, venue: true, startsAt: true },
+        },
+        promoCode: {
+          select: { code: true, discountType: true, discountValue: true, influencerName: true },
+        },
         items: true,
         payments: {
           orderBy: { createdAt: 'desc' },

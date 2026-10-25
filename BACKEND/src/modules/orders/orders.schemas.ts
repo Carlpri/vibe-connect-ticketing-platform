@@ -20,6 +20,7 @@ export const createOrderItemSchema = z.object({
 export const createOrderSchema = z.object({
   eventId: z.string().uuid('Invalid event ID'),
   items: z.array(createOrderItemSchema).min(1, 'Order must contain at least one item'),
+  promoCode: z.string().trim().optional(),
 }).superRefine((order, context) => {
   const ticketTypeIds = order.items.map((item) => item.ticketTypeId);
   if (new Set(ticketTypeIds).size !== ticketTypeIds.length) {

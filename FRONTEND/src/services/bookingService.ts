@@ -11,6 +11,7 @@
  */
 import apiClient from './api';
 import type { Order, CreateOrderInput, ApiSuccessResponse } from '../types';
+import type { MyTicketsPayload } from './ticketService';
 
 export const bookingService = {
   /**
@@ -80,6 +81,18 @@ export const bookingService = {
   },
 
   /**
+   * GET /api/tickets/order/:orderId
+   * Returns all tickets for a specific paid order (caller must own the order).
+   * Used by the checkout verify page after Paystack redirects back.
+   */
+  async getOrderTickets(orderId: string): Promise<ApiSuccessResponse<MyTicketsPayload>> {
+    const { data } = await apiClient.get<ApiSuccessResponse<MyTicketsPayload>>(
+      `/tickets/order/${encodeURIComponent(orderId)}`
+    );
+    return data;
+  },
+
+  /**
    * POST /api/orders/checkin
    * Scans / validates QR ticket code
    */
@@ -88,3 +101,4 @@ export const bookingService = {
     return data;
   },
 };
+

@@ -25,11 +25,17 @@ export class EmailService {
    */
   static getVerificationUrl(token: string, redirectUrl?: string, origin?: string): string {
     let baseUrl = env.FRONTEND_URL.replace(/\/$/, '');
+    if (process.env.NODE_ENV === 'production' && baseUrl.includes('localhost')) {
+      baseUrl = 'https://www.vibe-connect.co.ke';
+    }
     if (origin) {
       try {
         const parsed = new URL(origin);
         if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-          baseUrl = origin.replace(/\/$/, '');
+          // Only adopt origin if not pointing to localhost in production
+          if (!(process.env.NODE_ENV === 'production' && origin.includes('localhost'))) {
+            baseUrl = origin.replace(/\/$/, '');
+          }
         }
       } catch {
         // keep configured baseUrl

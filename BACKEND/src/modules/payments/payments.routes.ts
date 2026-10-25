@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../auth/auth.middleware';
+import { authenticate, optionalAuthenticate } from '../auth/auth.middleware';
 import { PaymentsController } from './payments.controller';
 
 const router = Router();
@@ -11,7 +11,7 @@ router.get('/config', PaymentsController.getConfig);
 router.post('/webhook', PaymentsController.handleWebhook);
 
 // Payment verification (called after Paystack redirects back with ?reference=...)
-router.get('/verify/:reference', PaymentsController.verifyPayment);
+router.get('/verify/:reference', optionalAuthenticate, PaymentsController.verifyPayment);
 
 // Payment initialization
 router.post('/initialize/:orderId', authenticate, PaymentsController.initializePayment);

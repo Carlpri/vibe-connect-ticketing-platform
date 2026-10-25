@@ -9,16 +9,14 @@ import {
   TextField,
   Chip,
   Divider,
-  Alert,
 } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/authService';
 import { colors } from '../styles/theme';
+import VerificationBanner from '../components/common/VerificationBanner';
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -79,8 +77,6 @@ export default function ProfilePage() {
     }
   };
 
-  const isFullyVerified = user.emailVerified && user.phoneVerified;
-
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: { xs: 5, md: 7 }, pb: 14 }}>
       <Container maxWidth="md">
@@ -107,24 +103,8 @@ export default function ProfilePage() {
           Manage your personal credentials, contact numbers, and security verification.
         </Typography>
 
-        {/* Verification Status Banner */}
-        {isFullyVerified ? (
-          <Alert
-            severity="success"
-            icon={<CheckCircleIcon />}
-            sx={{ mb: 4, borderRadius: '8px', bgcolor: 'rgba(43, 184, 90, 0.1)', color: colors.success, border: `1px solid ${colors.success}` }}
-          >
-            Your account is fully verified. You can create events and make ticket reservations.
-          </Alert>
-        ) : (
-          <Alert
-            severity="warning"
-            icon={<WarningAmberIcon />}
-            sx={{ mb: 4, borderRadius: '8px' }}
-          >
-            Account policy notice: Email and phone verification ensure ticket delivery and fraud protection.
-          </Alert>
-        )}
+        {/* Verification Status Banner with Action Buttons */}
+        <VerificationBanner sx={{ mb: 4 }} />
 
         <Box
           sx={{

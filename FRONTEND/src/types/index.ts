@@ -123,6 +123,14 @@ export interface TicketType {
   eventId: string;
 }
 
+export interface EventFlyer {
+  id: string;
+  eventId: string;
+  url: string;
+  order: number;
+  createdAt: string;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -137,6 +145,8 @@ export interface Event {
   address?: string;
   latitude?: number;
   longitude?: number;
+  placeId?: string;
+  directions?: string;
   onlineUrl?: string;
   startsAt: string;
   endsAt?: string;
@@ -144,6 +154,7 @@ export interface Event {
   organizerId: string;
   organizerName?: string;
   ticketTypes: TicketType[];
+  flyers?: EventFlyer[];
   createdAt: string;
 }
 
@@ -182,8 +193,11 @@ export interface CreateEventInput {
   address?: string;
   latitude?: number;
   longitude?: number;
+  placeId?: string;
+  directions?: string;
   onlineUrl?: string;
   ticketTypes: CreateTicketTypeInput[];
+  flyers?: Array<{ url: string; order: number }>;
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {}
@@ -209,6 +223,14 @@ export interface Order {
   eventId: string;
   status: OrderStatus;
   totalKes: number;
+  subtotalKes?: number;
+  discountKes?: number;
+  serviceFeeKes?: number;
+  promoCodeId?: string;
+  promoCodeSnapshot?: string;
+  discountTypeSnapshot?: string;
+  discountValueSnapshot?: number;
+  influencerSnapshot?: string;
   expiresAt: string;
   paidAt?: string;
   createdAt: string;
@@ -223,6 +245,161 @@ export interface Order {
 export interface CreateOrderInput {
   eventId: string;
   items: Array<{ ticketTypeId: string; quantity: number }>;
+  promoCode?: string;
+}
+
+// ----------------------------------------------------------
+// Promo Codes & Discounts
+// ----------------------------------------------------------
+
+export type DiscountType = 'PERCENTAGE' | 'FIXED';
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  eventId?: string | null;
+  createdByUserId: string;
+  influencerName?: string | null;
+  influencerEmail?: string | null;
+  discountType: DiscountType;
+  discountValue: number;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  maxUses?: number | null;
+  maxUsesPerCustomer?: number | null;
+  currentUses: number;
+  minOrderKes?: number | null;
+  isActive: boolean;
+  notes?: string | null;
+  createdAt: string;
+  event?: { id: string; title: string; slug?: string } | null;
+  stats?: {
+    totalUsages: number;
+    paidOrdersCount: number;
+    totalDiscountGivenKes: number;
+    grossSalesGeneratedKes: number;
+    netRevenueAfterDiscountKes: number;
+  };
+}
+
+export interface ValidatePromoCodeResponse {
+  valid: boolean;
+  promoCodeId: string;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  influencerName?: string | null;
+  discountKes: number;
+  subtotalKes: number;
+  netSubtotalKes: number;
+  message: string;
+}
+
+export interface InfluencerAttributionItem {
+  id: string;
+  code: string;
+  influencerName: string;
+  influencerEmail?: string | null;
+  eventTitle: string;
+  eventId?: string | null;
+  discountType: DiscountType;
+  discountValue: number;
+  isActive: boolean;
+  currentUses: number;
+  paidOrdersCount: number;
+  totalTicketsSold: number;
+  totalGrossSalesKes: number;
+  totalDiscountGivenKes: number;
+  netRevenueGeneratedKes: number;
+}
+
+// ----------------------------------------------------------
+// Platform Fee Configuration
+// ----------------------------------------------------------
+
+export interface PlatformConfig {
+  id: string;
+  serviceFeePercent: number;
+  serviceFeeFixedKes: number;
+  serviceFeePolicy: 'CUSTOMER_SURCHARGE' | 'ORGANIZER_ABSORBS';
+  updatedAt: string;
+  updatedByUserId?: string | null;
+}
+
+// ----------------------------------------------------------
+// Analytics & Dashboards
+// ----------------------------------------------------------
+
+export interface OrganizerPerformanceEvent {
+  id: string;
+  title: string;
+  slug?: string;
+  status: EventStatus;
+  format?: EventFormat;
+  city?: string;
+  startsAt: string;
+  capacity: number;
+  sold: number;
+  remaining: number;
+  soldPercentage: number;
+  isSoldOut: boolean;
+  grossRevenueKes?: number;
+}
+
+export interface OrganizerRecentOrder {
+  id: string;
+  eventTitle: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string | null;
+  status: OrderStatus;
+  subtotalKes: number;
+  discountKes: number;
+  serviceFeeKes: number;
+  totalKes: number;
+  promoCode?: string | null;
+  ticketsCount: number;
+  items: Array<{ ticketTypeId: string; quantity: number; unitPriceKes: number }>;
+  createdAt: string;
+  paymentReference?: string | null;
+}
+
+export interface OrganizerDashboardData {
+  metrics: {
+    totalEvents: number;
+    publishedEvents: number;
+    soldOutEventsCount: number;
+    totalCapacity: number;
+    totalTicketsSold: number;
+    remainingTickets: number;
+    soldPercentage: number;
+    grossTicketSalesKes: number;
+    totalDiscountsKes: number;
+    totalServiceFeesKes: number;
+    netOrganizerRevenueKes: number;
+    totalPaidOrders: number;
+  };
+  events: OrganizerPerformanceEvent[];
+  recentOrders: OrganizerRecentOrder[];
+  salesTrend: Array<{ date: string; grossKes: number; ordersCount: number }>;
+}
+
+export interface AdminDashboardData {
+  kpis: {
+    totalUsers: number;
+    totalOrganizers: number;
+    totalEvents: number;
+    publishedEvents: number;
+    totalTicketsSold: number;
+    totalPlatformCapacity: number;
+    paidOrdersCount: number;
+    grossSalesKes: number;
+    platformServiceFeesKes: number;
+    totalDiscountsKes: number;
+    totalPaidKes: number;
+  };
+  recentUsers: Array<{ id: string; name: string; email: string; role: string; createdAt: string }>;
+  recentEvents: Array<{ id: string; title: string; city?: string; status: string; startsAt: string; organizer?: { name: string } }>;
 }
 
 // ----------------------------------------------------------

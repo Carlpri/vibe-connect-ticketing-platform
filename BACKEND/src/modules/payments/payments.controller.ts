@@ -36,17 +36,17 @@ export class PaymentsController {
    * Can be checked by the authenticated customer or checkout callback
    */
   static async verifyPayment(
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
-      const reference = req.params.reference as string;
+      const reference = ((req.params.reference || req.query.reference || req.query.trxref) as string)?.trim();
       if (!reference) {
         throw new AppError('Payment reference is required', 400);
       }
 
-      const result = await PaymentsService.verifyAndFinalizePayment(reference);
+      const result = await PaymentsService.verifyAndFinalizePayment(reference, req.user?.userId);
       sendSuccess(res, result, result.message, 200);
     } catch (error) {
       next(error);

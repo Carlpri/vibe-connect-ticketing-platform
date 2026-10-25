@@ -16,6 +16,7 @@ import HomePage from './pages/HomePage';
 import EventsPage from './pages/EventsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import CheckoutPage from './pages/CheckoutPage';
+import CheckoutVerifyPage from './pages/CheckoutVerifyPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import MyTicketsPage from './pages/MyTicketsPage';
 import ProfilePage from './pages/ProfilePage';
@@ -43,6 +44,7 @@ export default function App() {
                 <Route path="/events" element={<EventsPage />} />
                 <Route path="/events/:id" element={<EventDetailPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/checkout/verify" element={<CheckoutVerifyPage />} />
                 <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
                 <Route
                   path="/my-tickets"

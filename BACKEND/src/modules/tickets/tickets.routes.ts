@@ -8,6 +8,9 @@ const router = Router();
 
 router.get('/my', authenticate, TicketsController.getMyTickets);
 
+// Retrieve tickets for a specific paid order (caller must own the order)
+router.get('/order/:orderId', authenticate, TicketsController.getTicketsForOrder);
+
 router.post(
   '/scan',
   authenticate,
@@ -17,3 +20,4 @@ router.post(
 );
 
 export default router;
+

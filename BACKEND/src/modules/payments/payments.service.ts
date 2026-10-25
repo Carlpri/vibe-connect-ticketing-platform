@@ -120,7 +120,7 @@ export class PaymentsService {
    * Verifies payment with Paystack and finalizes order & tickets upon successful verification.
    * Fully idempotent: duplicate calls return current status without re-issuing tickets.
    */
-  static async verifyAndFinalizePayment(reference: string) {
+  static async verifyAndFinalizePayment(reference: string, callerUserId?: string) {
     const payment = await prisma.payment.findUnique({
       where: { reference },
       include: { order: true },
@@ -128,6 +128,10 @@ export class PaymentsService {
 
     if (!payment) {
       throw new AppError(`Payment with reference '${reference}' not found`, 404);
+    }
+
+    if (callerUserId && payment.order.userId && payment.order.userId !== callerUserId) {
+      throw new AppError('Forbidden: You do not have permission to access this payment', 403);
     }
 
     // Idempotent: If already marked SUCCESS, ensure tickets exist and return
@@ -159,6 +163,24 @@ export class PaymentsService {
         if (current.status === 'SUCCESS' && current.order.status === 'PAID') return;
 
         if (verification.status === 'SUCCESS') {
+          // Currency integrity check: Must be KES
+          if (verification.currency && verification.currency.toUpperCase() !== 'KES') {
+            logger.warn('Payment currency mismatch during verification', {
+              expected: 'KES',
+              received: verification.currency,
+              reference,
+            });
+            await tx.payment.update({
+              where: { id: current.id },
+              data: {
+                status: 'FAILED',
+                resultDesc: `Currency mismatch: expected KES, received ${verification.currency}`,
+                rawCallback: verification.rawResponse as Prisma.InputJsonValue,
+              },
+            });
+            throw new AppError('Payment verification failed: Currency mismatch', 400);
+          }
+
           // Amount integrity check: Must match order amount exactly
           if (verification.amountKes !== current.amountKes) {
             logger.warn('Payment amount mismatch during verification', {
@@ -199,6 +221,29 @@ export class PaymentsService {
               paidAt,
             },
           });
+
+          // If order had a promo code, record usage and increment currentUses
+          if (current.order.promoCodeId) {
+            await tx.promoCode.update({
+              where: { id: current.order.promoCodeId },
+              data: { currentUses: { increment: 1 } },
+            });
+            await tx.promoCodeUsage.upsert({
+              where: {
+                promoCodeId_orderId: {
+                  promoCodeId: current.order.promoCodeId,
+                  orderId: current.orderId,
+                },
+              },
+              create: {
+                promoCodeId: current.order.promoCodeId,
+                orderId: current.orderId,
+                userId: current.order.userId,
+                discountKes: current.order.discountKes,
+              },
+              update: {},
+            });
+          }
         } else if (verification.status === 'FAILED') {
           await tx.payment.update({
             where: { id: current.id },
@@ -226,6 +271,8 @@ export class PaymentsService {
       message:
         verification.status === 'SUCCESS'
           ? 'Payment confirmed successfully. Digital tickets have been generated.'
+          : verification.status === 'PENDING'
+          ? 'Payment is still being processed by the provider.'
           : 'Payment verification indicated the transaction was not successful.',
     };
   }

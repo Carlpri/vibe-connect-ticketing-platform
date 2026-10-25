@@ -25,11 +25,15 @@ import EmailIcon from '@mui/icons-material/Email';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentModal from '../components/events/PaymentModal';
 import { formatKes, formatDate } from '../utils/format';
-import type { Cart } from '../types';
+import type { Cart, ValidatePromoCodeResponse } from '../types';
 import { colors } from '../styles/theme';
 import { bookingService } from '../services/bookingService';
 import { authService } from '../services/authService';
+import { promoCodeService } from '../services/promoCodeService';
 import PageMeta from '../components/common/PageMeta';
+import VerificationBanner from '../components/common/VerificationBanner';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 
 
 export default function CheckoutPage() {
@@ -80,6 +84,12 @@ export default function CheckoutPage() {
   // Quantities state
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
+  // Promo Code state
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [promoResult, setPromoResult] = useState<ValidatePromoCodeResponse | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
   useEffect(() => {
     const rawCart = sessionStorage.getItem('vibe_connect_cart');
     if (!rawCart) {
@@ -115,8 +125,35 @@ export default function CheckoutPage() {
   }, 0);
 
   const totalCount = Object.values(quantities).reduce((sum, q) => sum + q, 0);
+  const discountKes = promoResult ? promoResult.discountKes : 0;
   const serviceFeeKes = subtotalKes > 0 ? 50 : 0;
-  const grandTotalKes = subtotalKes + serviceFeeKes;
+  const grandTotalKes = Math.max(0, subtotalKes - discountKes + serviceFeeKes);
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCodeInput.trim()) return;
+    if (!cart.event.id) return;
+    setPromoValidating(true);
+    setPromoError(null);
+    setPromoResult(null);
+    try {
+      const res = await promoCodeService.validatePromoCode(
+        promoCodeInput.trim(),
+        cart.event.id,
+        subtotalKes
+      );
+      setPromoResult(res.data);
+    } catch (err: any) {
+      setPromoError(err?.response?.data?.message || 'Invalid or expired promo code.');
+    } finally {
+      setPromoValidating(false);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setPromoResult(null);
+    setPromoCodeInput('');
+    setPromoError(null);
+  };
 
   const handleProceed = async () => {
     setBookingError(null);
@@ -150,6 +187,7 @@ export default function CheckoutPage() {
       const response = await bookingService.createOrder({
         eventId: cart.event.id,
         items,
+        promoCode: promoResult?.code || undefined,
       });
       setBackendOrderId(response.data.id);
       setReservationAmount(response.data.totalKes);
@@ -197,23 +235,7 @@ export default function CheckoutPage() {
         </Typography>
 
         {user && !hasVerifiedContact && (
-          <Alert severity="warning" sx={{ mb: 3, borderRadius: '8px' }}>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Verify at least one contact method before reserving tickets.
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {!user.emailVerified && (
-                <Button component={Link} to="/verify-email" size="small" variant="contained">
-                  VERIFY EMAIL
-                </Button>
-              )}
-              {!user.phoneVerified && (
-                <Button component={Link} to="/profile" size="small" variant="outlined">
-                  VERIFY PHONE NUMBER
-                </Button>
-              )}
-            </Box>
-          </Alert>
+          <VerificationBanner sx={{ mb: 3 }} />
         )}
 
         {/* Sequence: Tickets → Details → Payment with Dark Order Summary */}
@@ -495,7 +517,92 @@ export default function CheckoutPage() {
 
             <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
 
-            {/* Separated calculations: Subtotal, Service fee, Total */}
+            {/* Promo Code */}
+            <Box sx={{ mb: 2 }}>
+              {promoResult ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: 1.5,
+                    borderRadius: '8px',
+                    bgcolor: 'rgba(51, 199, 89, 0.12)',
+                    border: '1px solid rgba(51, 199, 89, 0.4)',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircleIcon sx={{ color: colors.lime, fontSize: 18 }} />
+                    <Box>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.82rem', color: colors.lime }}>
+                        {promoResult.code}
+                        {promoResult.influencerName ? ` (${promoResult.influencerName})` : ''}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'rgba(250,247,242,0.7)' }}>
+                        -{formatKes(promoResult.discountKes)} discount applied
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Button
+                    size="small"
+                    onClick={handleRemovePromoCode}
+                    sx={{ color: 'rgba(250,247,242,0.5)', textTransform: 'none', minWidth: 0, p: 0.5 }}
+                  >
+                    ✕
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Promo code"
+                    value={promoCodeInput}
+                    onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromoCode(); }}
+                    sx={{
+                      flex: 1,
+                      '& .MuiInputBase-root': {
+                        bgcolor: 'rgba(255,255,255,0.08)',
+                        color: colors.inkFg,
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                      },
+                      '& .MuiInputBase-input::placeholder': { color: 'rgba(250,247,242,0.4)' },
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                    }}
+                    slotProps={{
+                      htmlInput: { style: { textTransform: 'uppercase' } },
+                      input: {
+                        startAdornment: <LocalOfferIcon sx={{ fontSize: 16, color: 'rgba(250,247,242,0.4)', mr: 0.5 }} />,
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={promoValidating || !promoCodeInput.trim()}
+                    onClick={handleApplyPromoCode}
+                    sx={{
+                      bgcolor: colors.accent,
+                      color: '#fff',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      fontSize: '0.82rem',
+                      px: 2,
+                      '&:hover': { bgcolor: colors.accentHover },
+                    }}
+                  >
+                    {promoValidating ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : 'Apply'}
+                  </Button>
+                </Box>
+              )}
+              {promoError && (
+                <Typography sx={{ fontSize: '0.78rem', color: '#ff6b6b', mt: 0.5 }}>
+                  {promoError}
+                </Typography>
+              )}
+            </Box>
+
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mb: 2.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" sx={{ color: 'rgba(250, 247, 242, 0.7)' }}>
@@ -505,6 +612,17 @@ export default function CheckoutPage() {
                   {formatKes(subtotalKes)}
                 </Typography>
               </Box>
+
+              {discountKes > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: colors.lime }}>
+                    Promo Discount
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: colors.lime }}>
+                    -{formatKes(discountKes)}
+                  </Typography>
+                </Box>
+              )}
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" sx={{ color: 'rgba(250, 247, 242, 0.7)' }}>

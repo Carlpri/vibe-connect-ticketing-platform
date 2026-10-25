@@ -23,7 +23,7 @@ const envSchema = z.object({
 
   // Email Provider (Resend)
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default('VIBE-CONNECT <onboarding@resend.dev>'),
+  EMAIL_FROM: z.string().default('VIBE-CONNECT <noreply@vibe-connect.co.ke>'),
   EMAIL_VERIFICATION_EXPIRES_MINUTES: z.string().transform(Number).default('30'),
   EMAIL_RESEND_COOLDOWN_SECONDS: z.string().transform(Number).default('60'),
 
@@ -79,7 +79,7 @@ export const env = {
 
   // Email Provider (Resend)
   RESEND_API_KEY: raw.RESEND_API_KEY,
-  EMAIL_FROM: raw.EMAIL_FROM || 'VIBE-CONNECT <onboarding@resend.dev>',
+  EMAIL_FROM: raw.EMAIL_FROM || 'VIBE-CONNECT <noreply@vibe-connect.co.ke>',
   EMAIL_VERIFICATION_EXPIRES_MINUTES: Number(raw.EMAIL_VERIFICATION_EXPIRES_MINUTES) || 30,
   EMAIL_RESEND_COOLDOWN_SECONDS: Number(raw.EMAIL_RESEND_COOLDOWN_SECONDS) || 60,
 
