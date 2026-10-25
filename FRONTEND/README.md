@@ -16,26 +16,26 @@ A modern, high-energy event discovery and digital ticketing web application tail
    - Real-time tier selection (Early Bird, Regular, VIP, VVIP) with capacity checks, counters, and subtotal calculation in KES.
    - Security middleware status awareness (`requireFullyVerified` policy warnings).
 
-3. **Kenyan M-Pesa STK Push Checkout**:
-   - Seamless Lipa na M-Pesa online checkout modal.
-   - Instant phone prompt simulation with PIN countdown and instant transaction receipt confirmation.
+3. **Paystack Secure Checkout**:
+   - Seamless checkout supporting Credit/Debit Cards, Mobile Money, and M-Pesa.
+   - Hosted authorization checkout and verifiable payment confirmation.
 
 4. **Digital Pass & QR Code Wallet (My Tickets)**:
    - Digital event tickets stored in the attendee account.
-   - Visual scannable QR gate passes with attendee details, ticket tier, and M-Pesa transaction reference.
+   - Visual scannable QR gate passes with attendee details, ticket tier, and payment reference.
    - One-click print/download support for entry gates.
 
 5. **Authentication & Verification Hub**:
    - Backend-connected authentication (`/api/auth/login`, `/api/auth/register`, `/api/auth/me`).
    - Email verification flow with `/verify-email?token=...` handling and resend capability.
-   - Phone OTP verification via 6-digit SMS code to satisfy the backend `requireFullyVerified` checkout policy.
+   - Phone OTP verification via 6-digit SMS code to satisfy the backend `requireAtLeastOneVerified` checkout policy.
 
 ---
 
 ## 🛠 Tech Stack
 
 - **Framework**: React 19 + TypeScript + Vite
-- **Styling**: Material-UI (MUI) custom dark theme (`#0D0D14` background, `#7C3AED` electric violet primary, `#F59E0B` amber secondary, `#00A651` Safaricom M-Pesa green)
+- **Styling**: Material-UI (MUI) custom dark theme
 - **Routing**: React Router v7
 - **HTTP Client**: Axios with automatic JWT injection and 401 handling
 - **Typography**: `@fontsource/inter`
@@ -51,7 +51,7 @@ frontend/
 │   ├── assets/               # Images and static media
 │   ├── components/
 │   │   ├── common/           # ProtectedRoute, EmptyState, LoadingSkeleton
-│   │   ├── events/           # EventCard, EventFilters, TicketSelector, MpesaModal
+│   │   ├── events/           # EventCard, EventFilters, TicketSelector, PaymentModal
 │   │   └── layout/           # Navbar, Footer
 │   ├── contexts/             # AuthContext (JWT rehydration, login, register, me)
 │   ├── data/                 # Mock Kenyan events catalog (Sol Fest, Blankets & Wine, etc.)
@@ -59,8 +59,8 @@ frontend/
 │   │   ├── HomePage.tsx      # Hero, popular tags, trending events, highlights
 │   │   ├── EventsPage.tsx    # Search, category & city filters, event grid
 │   │   ├── EventDetailPage.tsx # Event breakdown, ticket tier selector, checkout CTA
-│   │   ├── CheckoutPage.tsx  # Order summary, verification check, Lipa na M-Pesa
-│   │   ├── OrderConfirmationPage.tsx # Receipt, M-Pesa ref, ticket wallet link
+│   │   ├── CheckoutPage.tsx  # Order summary, verification check, Paystack checkout
+│   │   ├── OrderConfirmationPage.tsx # Receipt, payment ref, ticket wallet link
 │   │   ├── MyTicketsPage.tsx # Scannable digital QR passes & order history
 │   │   ├── ProfilePage.tsx   # Email verification & phone SMS OTP verification
 │   │   ├── LoginPage.tsx     # Sign in with JWT handling

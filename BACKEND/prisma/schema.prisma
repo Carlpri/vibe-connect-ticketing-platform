@@ -262,7 +262,14 @@ model Payment {
   orderId            String        @db.Uuid
   status             PaymentStatus @default(PENDING)
   amountKes          Int
-  phoneNumber        String
+  provider           String        @default("PAYSTACK")
+  reference          String?       @unique
+  currency           String        @default("KES")
+  channel            String?
+  customerEmail      String?
+  phoneNumber        String?
+
+  // Historical Daraja fields preserved for auditability
   merchantRequestId  String?
   checkoutRequestId  String?       @unique
   mpesaReceiptNumber String?       @unique
@@ -276,5 +283,7 @@ model Payment {
   order Order @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
+  @@index([reference])
   @@map("payments")
 }
+

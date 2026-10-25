@@ -266,7 +266,7 @@ export default function ProfilePage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <PhoneIphoneIcon sx={{ color: colors.mpesa, fontSize: 20 }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, color: colors.fg }}>
-                    Phone (M-Pesa OTP)
+                    Phone (SMS OTP)
                   </Typography>
                 </Box>
                 <Chip

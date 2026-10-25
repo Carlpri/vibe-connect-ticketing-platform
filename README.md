@@ -54,7 +54,7 @@ VIBE-CONNECT/
 | **Database & ORM** | PostgreSQL (hosted on Supabase) with Prisma ORM |
 | **Authentication** | JWT, bcryptjs |
 | **Validation** | Zod schemas |
-| **Payments** | Safaricom Daraja OAuth, STK Push, callback matching, and STK Query verification |
+| **Payments** | Paystack (Card, Mobile Money, M-Pesa), Webhook verification, and REST payment verification |
 
 ---
 
@@ -76,7 +76,7 @@ npm run install:frontend
 - **Backend**: Configure `BACKEND/.env` with `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, and `PORT=3000`. Use a strong, randomly generated `JWT_SECRET` of at least 32 characters; production startup fails without it.
 - **Frontend**: Configure `FRONTEND/.env` with `VITE_API_URL=http://localhost:3000` (the API client adds `/api`).
 
-Configure Daraja Sandbox using [the M-Pesa setup guide](docs/MPESA_DARAJA_SETUP.md). Daraja credentials and the public HTTPS callback URL must be configured as backend-only values in `BACKEND/.env` or Render secrets. No payment is initiated until those settings are present. Card and alternative mobile-money methods are not integrated. Organizer applicants can prepare drafts, but admins must approve them before event publishing. Set the Render `JWT_SECRET` manually; it is intentionally not stored in this repository.
+Configure Paystack credentials using [the Paystack setup guide](docs/PAYSTACK_SETUP.md). Paystack secret and public keys must be configured as backend-only values in `BACKEND/.env` or Render environment variables (`PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_CALLBACK_URL`). Organizer applicants can prepare drafts, but admins must approve them before event publishing. Set the Render `JWT_SECRET` manually; it is intentionally not stored in this repository.
 
 ### 3. Run Applications in Development
 

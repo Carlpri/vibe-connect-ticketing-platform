@@ -40,6 +40,7 @@ describe('Digital ticket QR flow', () => {
         passwordHash: 'hash',
         phone: `254711${String(runId).slice(-6)}`,
         role: 'ORGANIZER',
+        organizerApplicationStatus: 'APPROVED',
         emailVerified: true,
         phoneVerified: true,
       },
@@ -138,7 +139,7 @@ describe('Digital ticket QR flow', () => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${attendeeToken}`,
       },
-      body: JSON.stringify({ mpesaReceiptNumber: 'QRT1234567' }),
+      body: JSON.stringify({ paymentReference: 'PAY_1234567' }),
     });
     assert.equal(confirmRes.status, 501);
     assert.equal(

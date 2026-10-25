@@ -10,7 +10,7 @@ import authRoutes from './modules/auth/auth.routes';
 import eventsRoutes from './modules/events/events.routes';
 import ordersRoutes from './modules/orders/orders.routes';
 import ticketsRoutes from './modules/tickets/tickets.routes';
-import paymentsRoutes from './modules/orders/payments.routes';
+import paymentsRoutes from './modules/payments/payments.routes';
 
 const app = express();
 
@@ -20,11 +20,18 @@ app.use(
   cors({
     origin: '*',                                          // Allow all origins
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-paystack-signature'],
     credentials: false,                                   // Must be false when origin is '*'
   })
 );
-app.use(express.json());
+// Preserve rawBody buffer for payment webhook signature validation
+app.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 // API Root & Health Check
 app.get('/', (_req, res) => {
@@ -37,9 +44,11 @@ app.get('/', (_req, res) => {
       events: '/api/events',
       orders: '/api/orders',
       tickets: '/api/tickets',
+      payments: '/api/payments',
     },
   });
 });
+
 
 app.get('/api/health', (_req, res) => {
   sendSuccess(res, {

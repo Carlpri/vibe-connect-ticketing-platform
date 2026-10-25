@@ -21,10 +21,9 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import LockIcon from '@mui/icons-material/Lock';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import EmailIcon from '@mui/icons-material/Email';
 import { useAuth } from '../contexts/AuthContext';
-import MpesaModal from '../components/events/MpesaModal';
+import PaymentModal from '../components/events/PaymentModal';
 import { formatKes, formatDate } from '../utils/format';
 import type { Cart } from '../types';
 import { colors } from '../styles/theme';
@@ -38,7 +37,7 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const hasVerifiedContact = Boolean(user?.emailVerified || user?.phoneVerified);
   const [cart, setCart] = useState<Cart | null>(null);
-  const [mpesaModalOpen, setMpesaModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [backendOrderId, setBackendOrderId] = useState<string | null>(null);
   const [reservationAmount, setReservationAmount] = useState<number | null>(null);
   const [reservationExpiresAt, setReservationExpiresAt] = useState<string | null>(null);
@@ -130,7 +129,7 @@ export default function CheckoutPage() {
       return;
     }
     if (backendOrderId) {
-      setMpesaModalOpen(true);
+      setPaymentModalOpen(true);
       return;
     }
 
@@ -155,7 +154,7 @@ export default function CheckoutPage() {
       setBackendOrderId(response.data.id);
       setReservationAmount(response.data.totalKes);
       setReservationExpiresAt(response.data.expiresAt);
-      setMpesaModalOpen(true);
+      setPaymentModalOpen(true);
     } catch (err: any) {
       setBookingError(err?.response?.data?.message || 'Could not reserve tickets. Please try again.');
     } finally {
@@ -424,15 +423,15 @@ export default function CheckoutPage() {
 
               <FormControl component="fieldset" fullWidth>
                 <RadioGroup
-                  value="MPESA"
+                  value="PAYSTACK"
                   sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
                 >
-                  {/* M-Pesa (Primary) */}
+                  {/* Paystack (Primary: Card, Mobile Money, M-Pesa) */}
                   <Box
                     sx={{
                       p: 2,
                       borderRadius: '8px',
-                      border: `1.5px solid ${colors.mpesa}`,
+                      border: `1.5px solid ${colors.lime}`,
                       bgcolor: 'rgba(51, 199, 89, 0.08)',
                       display: 'flex',
                       alignItems: 'center',
@@ -442,94 +441,19 @@ export default function CheckoutPage() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Radio
                         checked
-                        value="MPESA"
-                        sx={{ color: colors.mpesa, '&.Mui-checked': { color: colors.mpesa } }}
+                        value="PAYSTACK"
+                        sx={{ color: colors.lime, '&.Mui-checked': { color: colors.lime } }}
                       />
                       <Box>
                         <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
-                          Safaricom Lipa na M-Pesa
+                          Paystack (Card, Mobile Money, M-Pesa)
                         </Typography>
                         <Typography variant="caption" sx={{ color: colors.mutedFg }}>
-                          An STK prompt is sent when Daraja is configured
+                          Pay securely via Visa, Mastercard, or Mobile Money
                         </Typography>
                       </Box>
                     </Box>
-                    <Box
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        bgcolor: colors.mpesa,
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 900,
-                        fontSize: '0.9rem',
-                      }}
-                    >
-                      M
-                    </Box>
-                  </Box>
-
-                  {/* Card Alternative */}
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '8px',
-                      border: `1px solid ${colors.border}`,
-                      bgcolor: 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Radio
-                        value="CARD"
-                        disabled
-                        sx={{ '&.Mui-checked': { color: colors.limeFg } }}
-                      />
-                      <Box>
-                        <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
-                          Credit or Debit Card (Unavailable)
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: colors.mutedFg }}>
-                          No card provider is configured
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <CreditCardIcon sx={{ color: colors.mutedFg }} />
-                  </Box>
-
-                  {/* Other / Mobile Money */}
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '8px',
-                      border: `1px solid ${colors.border}`,
-                      bgcolor: 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Radio
-                        value="OTHER"
-                        disabled
-                        sx={{ '&.Mui-checked': { color: colors.limeFg } }}
-                      />
-                      <Box>
-                        <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
-                          Airtel Money / Other (Unavailable)
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: colors.mutedFg }}>
-                          No alternative payment provider is configured
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <AccountBalanceWalletIcon sx={{ color: colors.mutedFg }} />
+                    <CreditCardIcon sx={{ color: colors.lime }} />
                   </Box>
                 </RadioGroup>
               </FormControl>
@@ -743,7 +667,7 @@ export default function CheckoutPage() {
             >
               {reserving
                 ? 'Creating Reservation…'
-                : backendOrderId ? 'Continue with M-Pesa' : 'Reserve and Pay with M-Pesa'}
+                : backendOrderId ? 'Continue to Paystack' : 'Reserve and Pay with Paystack'}
             </Button>
 
             <Typography
@@ -756,21 +680,20 @@ export default function CheckoutPage() {
                 fontSize: '0.75rem',
               }}
             >
-              A reservation is not a paid purchase. Tickets are issued only after Daraja verifies the payment.
+              A reservation is not a paid purchase. Tickets are issued only after Paystack verifies the payment.
             </Typography>
           </Paper>
         </Box>
       </Container>
 
-      {/* Payment is intentionally not simulated or confirmed in the frontend. */}
-      <MpesaModal
-        open={mpesaModalOpen}
-        onClose={() => setMpesaModalOpen(false)}
+      <PaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
         amountKes={reservationAmount ?? grandTotalKes}
         orderId={backendOrderId || undefined}
-        initialPhone={user?.phone ?? ''}
+        initialEmail={user?.email ?? ''}
         onPaymentSuccess={() => {
-          setMpesaModalOpen(false);
+          setPaymentModalOpen(false);
           navigate('/order-confirmation', { state: { orderId: backendOrderId } });
         }}
       />

@@ -1,14 +1,13 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../shared/utils/prisma';
 import { AppError } from '../../shared/errors/AppError';
-import { CreateOrderInput } from './orders.schemas';
+import { CreateOrderInput, InitiatePaymentInput } from './orders.schemas';
 import { TicketsService } from '../tickets/tickets.service';
-import { InitiatePaymentInput, MpesaCallbackInput } from './orders.schemas';
-import { MpesaService } from './mpesa.service';
-import { normalizeKenyanPhone } from './orders.schemas';
+import { PaymentsService } from '../payments/payments.service';
 import { logger } from '../../shared/utils/logger';
 
 export class OrdersService {
+
   /**
    * Reserve available tickets using database prices and a serializable transaction.
    */
@@ -147,7 +146,12 @@ export class OrdersService {
           select: {
             id: true,
             status: true,
+            provider: true,
+            reference: true,
             amountKes: true,
+            currency: true,
+            channel: true,
+            customerEmail: true,
             phoneNumber: true,
             mpesaReceiptNumber: true,
             resultDesc: true,
@@ -175,7 +179,12 @@ export class OrdersService {
           select: {
             id: true,
             status: true,
+            provider: true,
+            reference: true,
             amountKes: true,
+            currency: true,
+            channel: true,
+            customerEmail: true,
             phoneNumber: true,
             mpesaReceiptNumber: true,
             resultDesc: true,
@@ -198,222 +207,17 @@ export class OrdersService {
   }
 
   /**
-   * Request a Daraja STK push for an owned, unexpired pending order.
+   * Delegates payment initialization to PaymentsService.
    */
-  static async initiatePayment(orderId: string, userId: string, input: InitiatePaymentInput) {
-    if (!MpesaService.isConfigured()) {
-      throw new AppError('M-Pesa is not configured. Set the Daraja credentials and public HTTPS callback URL.', 503);
-    }
-
-    const payment = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "orders" WHERE "id" = ${orderId}::uuid FOR UPDATE`;
-      const order = await tx.order.findUnique({
-        where: { id: orderId },
-        include: { payments: { orderBy: { createdAt: 'desc' } } },
-      });
-
-      if (!order) throw new AppError('Order not found', 404);
-      if (order.userId !== userId) {
-        throw new AppError('Forbidden: You do not have access to this order', 403);
-      }
-      if (order.status !== 'PENDING') {
-        throw new AppError(`Cannot pay for order with status ${order.status}`, 400);
-      }
-      if (order.expiresAt <= new Date()) {
-        throw new AppError('This reservation has expired. Please reserve tickets again.', 400);
-      }
-
-      const pendingPayment = order.payments.find((entry) => entry.status === 'PENDING');
-      if (pendingPayment?.checkoutRequestId) {
-        return { payment: pendingPayment, shouldInitiate: false };
-      }
-      if (pendingPayment) {
-        throw new AppError('A payment request is already being prepared for this order', 409);
-      }
-
-      const created = await tx.payment.create({
-        data: {
-          orderId,
-          amountKes: order.totalKes,
-          phoneNumber: input.phoneNumber,
-          status: 'PENDING',
-        },
-      });
-      await tx.order.update({
-        where: { id: orderId },
-        data: { expiresAt: new Date(Date.now() + 15 * 60 * 1000) },
-      });
-      return { payment: created, shouldInitiate: true };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-
-    if (!payment.shouldInitiate) {
-      return {
-        paymentId: payment.payment.id,
-        checkoutRequestId: payment.payment.checkoutRequestId,
-        orderId,
-        amountKes: payment.payment.amountKes,
-        status: payment.payment.status,
-        message: 'M-Pesa payment prompt is already pending. Complete it on your phone.',
-      };
-    }
-
-    let response;
-    try {
-      response = await MpesaService.initiateStkPush({
-        amountKes: payment.payment.amountKes,
-        orderId,
-        phoneNumber: input.phoneNumber,
-      });
-    } catch (error) {
-      await prisma.payment.update({
-        where: { id: payment.payment.id },
-        data: {
-          status: 'FAILED',
-          resultDesc: 'M-Pesa request could not be initiated',
-        },
-      });
-      throw error;
-    }
-
-    const updatedPayment = await prisma.payment.update({
-      where: { id: payment.payment.id },
-      data: {
-        merchantRequestId: response.MerchantRequestID,
-        checkoutRequestId: response.CheckoutRequestID,
-      },
-    });
-
-    return {
-      paymentId: updatedPayment.id,
-      checkoutRequestId: updatedPayment.checkoutRequestId,
-      orderId,
-      amountKes: updatedPayment.amountKes,
-      status: updatedPayment.status,
-      message: response.CustomerMessage || 'Check your phone and enter your M-Pesa PIN to complete payment.',
-    };
+  static async initiatePayment(orderId: string, userId: string, input?: InitiatePaymentInput) {
+    return PaymentsService.initiateOrderPayment(orderId, userId, input);
   }
 
   /**
-   * Client-side payment confirmation is never trusted; only a verified provider callback may mark an order paid.
+   * Client-side payment confirmation is never trusted; only verified provider callbacks/webhooks may mark an order paid.
    */
   static async confirmPayment(): Promise<never> {
-    throw new AppError('Payment confirmation is unavailable until a provider callback is verified', 501);
-  }
-
-  /**
-   * Accepts a Daraja callback only after matching it to a stored request and confirming
-   * successful payment status with Daraja's server-to-server STK query endpoint.
-   */
-  static async processMpesaCallback(input: MpesaCallbackInput): Promise<void> {
-    const callback = input.Body.stkCallback;
-    const payment = await prisma.payment.findUnique({
-      where: { checkoutRequestId: callback.CheckoutRequestID },
-      include: { order: true },
-    });
-
-    if (!payment || payment.merchantRequestId !== callback.MerchantRequestID) {
-      logger.warn('Ignored M-Pesa callback with no matching payment request', {
-        category: 'MPESA_CALLBACK_UNMATCHED',
-      });
-      return;
-    }
-
-    if (payment.status === 'SUCCESS') {
-      await TicketsService.issueTicketsForPaidOrder(payment.orderId);
-      return;
-    }
-    if (payment.status !== 'PENDING' || payment.order.status !== 'PENDING') {
-      return;
-    }
-
-    const providerResult = await MpesaService.queryStkPush(callback.CheckoutRequestID);
-    if (
-      providerResult.ResponseCode !== '0' ||
-      providerResult.CheckoutRequestID !== callback.CheckoutRequestID ||
-      providerResult.MerchantRequestID !== callback.MerchantRequestID ||
-      Number(providerResult.ResultCode) !== callback.ResultCode
-    ) {
-      logger.warn('M-Pesa STK query did not confirm callback result', {
-        category: 'MPESA_QUERY_NOT_CONFIRMED',
-        paymentId: payment.id,
-        resultCode: providerResult.ResultCode,
-      });
-      throw new AppError('M-Pesa callback is not yet confirmed by the provider', 503);
-    }
-
-    const rawCallback = input as unknown as Prisma.InputJsonValue;
-    if (callback.ResultCode !== 0) {
-      await prisma.$transaction(async (tx) => {
-        await tx.payment.updateMany({
-          where: { id: payment.id, status: 'PENDING' },
-          data: {
-            status: 'FAILED',
-            resultCode: callback.ResultCode,
-            resultDesc: callback.ResultDesc,
-            rawCallback,
-          },
-        });
-      });
-      return;
-    }
-
-    const metadata = new Map(
-      (callback.CallbackMetadata?.Item ?? []).map((item) => [item.Name, item.Value])
-    );
-    const amount = metadata.get('Amount');
-    const receiptNumber = metadata.get('MpesaReceiptNumber');
-    const phoneNumber = metadata.get('PhoneNumber');
-
-    if (
-      typeof amount !== 'number' ||
-      typeof receiptNumber !== 'string' ||
-      (typeof phoneNumber !== 'number' && typeof phoneNumber !== 'string') ||
-      amount !== payment.amountKes ||
-      normalizeKenyanPhone(String(phoneNumber)) !== payment.phoneNumber
-    ) {
-      logger.warn('Rejected M-Pesa callback with mismatched payment details', {
-        category: 'MPESA_CALLBACK_MISMATCH',
-        paymentId: payment.id,
-      });
-      throw new AppError('M-Pesa callback did not match the pending payment', 400);
-    }
-
-    await prisma.$transaction(async (tx) => {
-      const current = await tx.payment.findUnique({
-        where: { id: payment.id },
-        include: { order: true },
-      });
-      if (!current) throw new AppError('Payment record not found', 404);
-      if (current.status === 'SUCCESS' && current.order.status === 'PAID') return;
-      if (current.status !== 'PENDING' || current.order.status !== 'PENDING') return;
-
-      const duplicateReceipt = await tx.payment.findUnique({
-        where: { mpesaReceiptNumber: receiptNumber },
-        select: { id: true },
-      });
-      if (duplicateReceipt && duplicateReceipt.id !== payment.id) {
-        throw new AppError('M-Pesa receipt has already been applied to another payment', 409);
-      }
-
-      const now = new Date();
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: 'SUCCESS',
-          mpesaReceiptNumber: receiptNumber,
-          paidAt: now,
-          resultCode: callback.ResultCode,
-          resultDesc: callback.ResultDesc,
-          rawCallback,
-        },
-      });
-      await tx.order.update({
-        where: { id: payment.orderId },
-        data: { status: 'PAID', paidAt: now },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-
-    await TicketsService.issueTicketsForPaidOrder(payment.orderId);
+    throw new AppError('Payment confirmation is unavailable until verified by provider webhook', 501);
   }
 
   /**
@@ -423,3 +227,4 @@ export class OrdersService {
     return TicketsService.verifyAndCheckIn(qrCode, scannedByUserId);
   }
 }
+

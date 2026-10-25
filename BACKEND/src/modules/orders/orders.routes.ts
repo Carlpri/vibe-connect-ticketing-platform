@@ -20,8 +20,7 @@ import {
 //   PROTECTION: authenticate + requireAtLeastOneVerified
 //   (Either email or phone verification is REQUIRED to create an order / purchase tickets)
 // - GET  /api/orders/my               (get attendee orders - authenticate)
-// - GET  /api/orders/:id              (get order details - authenticate)
-// - POST /api/orders/:id/pay          (Daraja STK push)
+// - POST /api/orders/:id/pay          (Payment gateway checkout initialization)
 // - POST /api/orders/:id/confirm-payment (disabled; client confirmation is never trusted)
 // - POST /api/orders/checkin          (validate QR ticket code - authenticate)
 // ===========================================

@@ -10,18 +10,10 @@ services:
         value: "20"
       - key: JWT_SECRET
         sync: false
-      - key: MPESA_ENV
-        value: sandbox
-      - key: MPESA_CONSUMER_KEY
+      - key: PAYSTACK_SECRET_KEY
         sync: false
-      - key: MPESA_CONSUMER_SECRET
+      - key: PAYSTACK_PUBLIC_KEY
         sync: false
-      - key: MPESA_SHORTCODE
+      - key: PAYSTACK_CALLBACK_URL
         sync: false
-      - key: MPESA_PASSKEY
-        sync: false
-      - key: MPESA_CALLBACK_URL
-        sync: false
-      - key: MPESA_TRANSACTION_TYPE
-        value: CustomerPayBillOnline
     autoDeploy: true

@@ -36,30 +36,9 @@ export const orderIdParamSchema = z.object({
 });
 
 export const initiatePaymentSchema = z.object({
-  phoneNumber: z
-    .string()
-    .regex(kenyanPhoneRegex, 'Please provide a valid Kenyan phone number (e.g., 0712345678 or 254712345678)')
-    .transform(normalizeKenyanPhone),
+  email: z.string().email('Please provide a valid email address').optional(),
+  callbackUrl: z.string().url('Please provide a valid callback URL').optional(),
 });
-
-const callbackMetadataSchema = z.object({
-  Item: z.array(z.object({
-    Name: z.string(),
-    Value: z.union([z.string(), z.number()]).optional(),
-  }).passthrough()),
-}).passthrough().optional();
-
-export const mpesaCallbackSchema = z.object({
-  Body: z.object({
-    stkCallback: z.object({
-      MerchantRequestID: z.string().min(1),
-      CheckoutRequestID: z.string().min(1),
-      ResultCode: z.number().int(),
-      ResultDesc: z.string(),
-      CallbackMetadata: callbackMetadataSchema,
-    }).passthrough(),
-  }).passthrough(),
-}).passthrough();
 
 export const checkinTicketSchema = z.object({
   qrCode: z.string().min(5, 'QR Code is required'),
@@ -67,5 +46,5 @@ export const checkinTicketSchema = z.object({
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;
-export type MpesaCallbackInput = z.infer<typeof mpesaCallbackSchema>;
 export type CheckinTicketInput = z.infer<typeof checkinTicketSchema>;
+

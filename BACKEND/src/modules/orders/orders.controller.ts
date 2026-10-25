@@ -1,10 +1,8 @@
-import { Response, NextFunction, Request } from 'express';
+import { Response, NextFunction } from 'express';
 import { OrdersService } from './orders.service';
+import { PaymentsService } from '../payments/payments.service';
 import { sendSuccess } from '../../shared/utils/apiResponse';
 import { AuthenticatedRequest } from '../../shared/types';
-import { mpesaCallbackSchema } from './orders.schemas';
-import { AppError } from '../../shared/errors/AppError';
-import { MpesaService } from './mpesa.service';
 
 export class OrdersController {
   /**
@@ -48,42 +46,17 @@ export class OrdersController {
 
   /**
    * POST /api/orders/:id/pay
+   * Initiates payment via configured provider (Paystack)
    * Requires: authenticate
    */
   static async initiatePayment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await OrdersService.initiatePayment(
+      const result = await PaymentsService.initiateOrderPayment(
         req.params.id as string,
         req.user!.userId,
         req.body
       );
-      sendSuccess(res, result, result.message, 202);
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * POST /api/payments/mpesa/callback
-   * Daraja webhook; payment is only finalized after provider status verification.
-   */
-  static async mpesaCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const parsed = mpesaCallbackSchema.safeParse(req.body);
-      if (!parsed.success) {
-        throw new AppError('Invalid M-Pesa callback payload', 400);
-      }
-      await OrdersService.processMpesaCallback(parsed.data);
-      res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async verifyMpesaSandbox(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      await MpesaService.verifySandboxAuthentication();
-      sendSuccess(res, { authenticated: true }, 'Daraja Sandbox authentication successful', 200);
+      sendSuccess(res, result, result.message, 200);
     } catch (error) {
       next(error);
     }
@@ -91,7 +64,7 @@ export class OrdersController {
 
   /**
    * POST /api/orders/:id/confirm-payment
-   * Requires: authenticate
+   * Client-side payment confirmation is never trusted.
    */
   static async confirmPayment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {

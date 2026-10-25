@@ -15,14 +15,11 @@ const envSchema = z.object({
   // Application & Frontend URLs
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
-  // Safaricom Daraja M-Pesa Express
-  MPESA_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
-  MPESA_CONSUMER_KEY: z.string().optional(),
-  MPESA_CONSUMER_SECRET: z.string().optional(),
-  MPESA_SHORTCODE: z.string().optional(),
-  MPESA_PASSKEY: z.string().optional(),
-  MPESA_CALLBACK_URL: z.string().url().optional(),
-  MPESA_TRANSACTION_TYPE: z.enum(['CustomerPayBillOnline', 'CustomerBuyGoodsOnline']).default('CustomerPayBillOnline'),
+  // Payment Provider Configuration (Paystack)
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+  PAYSTACK_PUBLIC_KEY: z.string().optional(),
+  PAYSTACK_CALLBACK_URL: z.string().url().optional(),
+
 
   // Email Provider (Resend)
   RESEND_API_KEY: z.string().optional(),
@@ -74,13 +71,11 @@ export const env = {
   JWT_EXPIRES_IN: raw.JWT_EXPIRES_IN || '7d',
   TICKET_QR_SECRET: raw.TICKET_QR_SECRET || raw.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
   FRONTEND_URL: raw.FRONTEND_URL || 'http://localhost:5173',
-  MPESA_ENV: raw.MPESA_ENV || 'sandbox',
-  MPESA_CONSUMER_KEY: raw.MPESA_CONSUMER_KEY || '',
-  MPESA_CONSUMER_SECRET: raw.MPESA_CONSUMER_SECRET || '',
-  MPESA_SHORTCODE: raw.MPESA_SHORTCODE || '',
-  MPESA_PASSKEY: raw.MPESA_PASSKEY || '',
-  MPESA_CALLBACK_URL: raw.MPESA_CALLBACK_URL || '',
-  MPESA_TRANSACTION_TYPE: raw.MPESA_TRANSACTION_TYPE || 'CustomerPayBillOnline',
+  // Payment Provider (Paystack)
+  PAYSTACK_SECRET_KEY: raw.PAYSTACK_SECRET_KEY || '',
+  PAYSTACK_PUBLIC_KEY: raw.PAYSTACK_PUBLIC_KEY || '',
+  PAYSTACK_CALLBACK_URL: raw.PAYSTACK_CALLBACK_URL || '',
+
 
   // Email Provider (Resend)
   RESEND_API_KEY: raw.RESEND_API_KEY,

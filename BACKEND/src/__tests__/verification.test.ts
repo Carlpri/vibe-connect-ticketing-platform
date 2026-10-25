@@ -9,6 +9,9 @@ import { prisma } from '../shared/utils/prisma';
 import { env } from '../config/env';
 import { hashVerificationCode, generateSecureToken, generateSecureOtp } from '../shared/utils/crypto';
 import { normalizePhoneNumber } from '../shared/utils/phone';
+import express from 'express';
+import { authenticate, requireAtLeastOneVerified } from '../modules/auth/auth.middleware';
+import { errorHandler } from '../shared/middleware/errorHandler';
 import { SmsService } from '../shared/services/sms.service';
 
 describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
@@ -551,19 +554,17 @@ describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
     );
 
     // Test with a test endpoint guarded by the purchase verification policy
-    const expressApp = (await import('express')).default;
-    const { requireAtLeastOneVerified } = await import('../modules/auth/auth.middleware');
-    const testApp = expressApp();
-    testApp.use(expressApp.json());
+    const testApp = express();
+    testApp.use(express.json());
     testApp.post(
       '/test/purchase',
-      (await import('../modules/auth/auth.middleware')).authenticate,
+      authenticate,
       requireAtLeastOneVerified,
       (_req, res) => {
         res.json({ success: true, message: 'Ticket purchased' });
       }
     );
-    testApp.use((await import('../shared/middleware/errorHandler')).errorHandler);
+    testApp.use(errorHandler);
 
     const testServer = testApp.listen(0);
     const port = (testServer.address() as { port: number }).port;
@@ -605,19 +606,17 @@ describe('VIBE-CONNECT Email & Phone Verification Test Suite', () => {
       { expiresIn: '1h' }
     );
 
-    const expressApp = (await import('express')).default;
-    const { requireAtLeastOneVerified } = await import('../modules/auth/auth.middleware');
-    const testApp = expressApp();
-    testApp.use(expressApp.json());
+    const testApp = express();
+    testApp.use(express.json());
     testApp.post(
       '/test/purchase',
-      (await import('../modules/auth/auth.middleware')).authenticate,
+      authenticate,
       requireAtLeastOneVerified,
       (_req, res) => {
         res.json({ success: true, message: 'Ticket purchased successfully' });
       }
     );
-    testApp.use((await import('../shared/middleware/errorHandler')).errorHandler);
+    testApp.use(errorHandler);
 
     const testServer = testApp.listen(0);
     const port = (testServer.address() as { port: number }).port;

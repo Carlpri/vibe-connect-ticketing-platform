@@ -126,7 +126,7 @@ export const requireAtLeastOneVerified = async (
   }
 
   if (!user.emailVerified && !user.phoneVerified) {
-    sendError(res, 'Verify your email or phone number before purchasing tickets', 403);
+    sendError(res, 'Email or phone verification required before purchasing tickets', 403);
     return;
   }
 

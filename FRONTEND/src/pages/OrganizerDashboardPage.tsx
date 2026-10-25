@@ -54,8 +54,6 @@ export default function OrganizerDashboardPage() {
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
   const [reviewingApplicationId, setReviewingApplicationId] = useState<string | null>(null);
-  const [mpesaDiagnosticRunning, setMpesaDiagnosticRunning] = useState(false);
-  const [mpesaDiagnosticResult, setMpesaDiagnosticResult] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
 
   const fetchOrganizerEvents = async (period: 'upcoming' | 'past') => {
     setLoading(true);
@@ -118,21 +116,6 @@ export default function OrganizerDashboardPage() {
     }
   };
 
-  const checkMpesaSandboxAuthentication = async () => {
-    setMpesaDiagnosticRunning(true);
-    setMpesaDiagnosticResult(null);
-    try {
-      const response = await authService.verifyMpesaSandbox();
-      setMpesaDiagnosticResult({ severity: 'success', message: response.message });
-    } catch (error: any) {
-      setMpesaDiagnosticResult({
-        severity: 'error',
-        message: error?.response?.data?.message || 'Daraja Sandbox authentication check failed.',
-      });
-    } finally {
-      setMpesaDiagnosticRunning(false);
-    }
-  };
 
   const handleGateScan = async () => {
     const code = scanInput.trim();
@@ -199,33 +182,6 @@ export default function OrganizerDashboardPage() {
   return (
     <Box sx={{ minHeight: '90vh', bgcolor: colors.bg, py: { xs: 4, md: 6 } }}>
       <Container maxWidth="lg">
-        {user?.role === 'ADMIN' && (
-          <Card sx={{ p: 3, mb: 4, border: `1px solid ${colors.border}`, borderRadius: '12px' }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: colors.fg }}>
-                  Daraja Sandbox connection
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Checks backend OAuth credentials only. Does not send a payment request.
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                onClick={checkMpesaSandboxAuthentication}
-                disabled={mpesaDiagnosticRunning}
-                startIcon={mpesaDiagnosticRunning ? <CircularProgress size={18} /> : undefined}
-              >
-                {mpesaDiagnosticRunning ? 'Checking…' : 'Check Sandbox OAuth'}
-              </Button>
-            </Box>
-            {mpesaDiagnosticResult && (
-              <Alert severity={mpesaDiagnosticResult.severity} sx={{ mt: 2 }}>
-                {mpesaDiagnosticResult.message}
-              </Alert>
-            )}
-          </Card>
-        )}
 
         {user?.role === 'ORGANIZER' && user.organizerApplicationStatus !== 'APPROVED' && (
           <Alert severity={user.organizerApplicationStatus === 'REJECTED' ? 'warning' : 'info'} sx={{ mb: 3 }}>

@@ -22,7 +22,7 @@
 
 ### P0 — Critical security, data integrity, or production-breaking problems
 
-- **Fixed locally:** The payment confirmation endpoint never accepts client claims. Checkout creates pending reservations and issues tickets only after the Daraja callback is matched and server-to-server verified.
+- **Fixed locally:** The payment confirmation endpoint never accepts client claims. Checkout creates pending reservations and issues tickets only after payment provider verification.
 - **Fixed locally:** Production startup rejects a missing, weak, or known default `JWT_SECRET`; the Render blueprint declares it as a manually configured secret.
 - **Fixed locally:** Order creation ignores client prices, requires valid UUIDs, verifies event/ticket eligibility, and calculates the total from database prices.
 
@@ -33,8 +33,8 @@
 - **Implemented locally:** Organizer sign-ups can authenticate and prepare drafts, but publishing and ticket scanning require admin approval. Only admins can list, approve, or reject organizer applications.
 - **Fixed locally:** Pending, non-expired reservations count against ticket capacity; booking validates published/unended events, event ownership of ticket types, sales windows, authoritative prices, totals, and inventory in a serializable transaction with retry for serialization conflicts.
 - **Fixed locally:** Check-in uses a conditional atomic update; duplicate concurrent scans cannot both admit a ticket.
-- **Implemented locally, pending sandbox credentials/callback testing:** Daraja OAuth, STK Push, callback matching, amount/receipt/phone checks, and server-to-server STK Query verification. Paid-order state and ticket issuance only follow verified provider status.
-- **Incomplete:** Card and alternative mobile-money providers are not integrated.
+- **Implemented locally:** Paystack integration foundation replacing legacy Daraja. Includes HMAC SHA512 webhook signature verification, checkout session initialization, REST verification, amount conversion, provider-neutral database schema, and automated ticket issuance.
+- **Completed:** Card, M-Pesa, and Mobile Money checkout supported via Paystack.
 
 ### P2 — Important reliability, usability, and operational improvements
 

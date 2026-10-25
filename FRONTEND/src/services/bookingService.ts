@@ -42,15 +42,40 @@ export const bookingService = {
 
   async initiatePayment(
     orderId: string,
-    input: { phoneNumber: string }
+    input?: { email?: string; callbackUrl?: string }
   ): Promise<ApiSuccessResponse<{
-    checkoutRequestId: string | null;
     paymentId: string;
+    orderId: string;
+    reference: string;
+    authorizationUrl: string;
+    accessCode?: string;
     amountKes: number;
     status: string;
     message: string;
   }>> {
-    const { data } = await apiClient.post('/orders/' + orderId + '/pay', input);
+    const { data } = await apiClient.post(`/orders/${orderId}/pay`, input ?? {});
+    return data;
+  },
+
+  async verifyPayment(reference: string): Promise<ApiSuccessResponse<{
+    status: string;
+    reference: string;
+    amountKes?: number;
+    paidAt?: string;
+    channel?: string;
+    orderId?: string;
+  }>> {
+    const { data } = await apiClient.get(`/payments/verify/${encodeURIComponent(reference)}`);
+    return data;
+  },
+
+  async getPaymentConfig(): Promise<ApiSuccessResponse<{
+    provider: string;
+    configured: boolean;
+    isTestMode: boolean;
+    publicKey: string | null;
+  }>> {
+    const { data } = await apiClient.get('/payments/config');
     return data;
   },
 
