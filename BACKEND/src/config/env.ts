@@ -22,6 +22,7 @@ const envSchema = z.object({
 
 
   // Email Provider (Resend)
+  EMAIL_PROVIDER: z.enum(['resend', 'mock', 'auto']).default('auto'),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('VIBE-CONNECT <noreply@vibe-connect.co.ke>'),
   EMAIL_VERIFICATION_EXPIRES_MINUTES: z.string().transform(Number).default('30'),
@@ -78,6 +79,7 @@ export const env = {
 
 
   // Email Provider (Resend)
+  EMAIL_PROVIDER: (raw.EMAIL_PROVIDER as 'resend' | 'mock' | 'auto') || (raw.NODE_ENV === 'production' ? 'resend' : 'auto'),
   RESEND_API_KEY: raw.RESEND_API_KEY,
   EMAIL_FROM: raw.EMAIL_FROM || 'VIBE-CONNECT <noreply@vibe-connect.co.ke>',
   EMAIL_VERIFICATION_EXPIRES_MINUTES: Number(raw.EMAIL_VERIFICATION_EXPIRES_MINUTES) || 30,

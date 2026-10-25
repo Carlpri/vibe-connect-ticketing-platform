@@ -55,18 +55,23 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register({
+      const regResult = await register({
         name,
         email,
         phone: phone || undefined,
         password,
         role,
       });
-      toast.success(
-        role === 'ORGANIZER'
-          ? 'Account created. Your organizer request is pending admin approval.'
-          : 'Account created! Please check your email to verify.'
-      );
+
+      if (regResult?.verificationEmailSent === false) {
+        toast('Account created, but verification email could not be sent. You can request a new link from your profile.', { icon: '⚠️' });
+      } else {
+        toast.success(
+          role === 'ORGANIZER'
+            ? 'Account created. Your organizer request is pending admin approval.'
+            : 'Account created! Please check your email to verify.'
+        );
+      }
       if (role === 'ORGANIZER') {
         navigate('/organizer', { replace: true });
       } else {

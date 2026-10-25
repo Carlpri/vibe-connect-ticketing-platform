@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { User, LoginInput, RegisterInput } from '../types';
+import type { User, LoginInput, RegisterInput, RegisterResponse } from '../types';
 import { authService } from '../services/authService';
 
 interface AuthContextValue {
@@ -8,7 +8,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (input: LoginInput) => Promise<User>;
-  register: (input: RegisterInput) => Promise<User>;
+  register: (input: RegisterInput) => Promise<RegisterResponse>;
   setCredentials: (token: string, user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (input: RegisterInput) => {
       const res = await authService.register(input);
       setCredentials(res.data.token, res.data.user);
-      return res.data.user;
+      return res.data;
     },
     [setCredentials]
   );

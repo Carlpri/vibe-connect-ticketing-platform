@@ -321,7 +321,8 @@ export class AuthService {
     });
 
     if (!emailResult.success) {
-      throw new AppError('Failed to send verification email. Please try again later.', 502);
+      const detail = emailResult.error ? ` (${emailResult.error})` : '';
+      throw new AppError(`Failed to send verification email${detail}. Please try again later.`, 502);
     }
 
     const verificationUrl = EmailService.getVerificationUrl(rawToken, input.redirectUrl, input.origin);
