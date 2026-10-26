@@ -1,5 +1,32 @@
 import { z } from 'zod';
 
+/**
+ * Normalises a single flyer entry.
+ * Accepts:
+ *   - A bare URL string                  → returned as-is
+ *   - An object with a `url` or `preview` field that is a real HTTP(S) URL → that URL is returned
+ *   - Anything with only a `dataUrl` (base64)  → returned as the sentinel '__SKIP__'
+ *     so the array-level preprocessor can drop it before Zod validates elements.
+ */
+function normaliseFlyerEntry(val: unknown): unknown {
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object') {
+    const obj = val as Record<string, unknown>;
+    for (const key of ['url', 'preview']) {
+      if (
+        typeof obj[key] === 'string' &&
+        (obj[key] as string).length > 0 &&
+        !(obj[key] as string).startsWith('data:')
+      ) {
+        return obj[key];
+      }
+    }
+    // base64-only object — signal the array filter to drop it
+    return '__SKIP__';
+  }
+  return val;
+}
+
 export const eventFormatSchema = z.enum(['PHYSICAL', 'ONLINE', 'HYBRID']);
 export const eventStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED']);
 
@@ -51,8 +78,16 @@ export const createEventSchema = z.object({
   placeId: z.string().trim().max(200).optional(),
   directions: z.string().trim().max(500).optional(),
 
-  // Promotional flyers (up to 10)
-  flyers: z.array(z.string()).max(10, 'Maximum 10 flyers per event').optional(),
+  // Promotional flyers (up to 10) — accepts bare URL strings or legacy flyer objects
+  flyers: z.preprocess(
+    (val) =>
+      Array.isArray(val)
+        ? val
+            .map(normaliseFlyerEntry)
+            .filter((v) => v !== undefined && v !== null && v !== '__SKIP__')
+        : val,
+    z.array(z.string().url('Each flyer must be a valid URL')).max(10, 'Maximum 10 flyers per event')
+  ).optional(),
 
   // Online location details
   onlineUrl: z.string().url('Online meeting link must be a valid URL').optional().or(z.literal('')),
@@ -95,7 +130,15 @@ export const updateEventSchema = z.object({
   longitude: z.number().min(-180).max(180).optional(),
   placeId: z.string().trim().max(200).optional(),
   directions: z.string().trim().max(500).optional(),
-  flyers: z.array(z.string()).max(10, 'Maximum 10 flyers per event').optional(),
+  flyers: z.preprocess(
+    (val) =>
+      Array.isArray(val)
+        ? val
+            .map(normaliseFlyerEntry)
+            .filter((v) => v !== undefined && v !== null && v !== '__SKIP__')
+        : val,
+    z.array(z.string().url('Each flyer must be a valid URL')).max(10, 'Maximum 10 flyers per event')
+  ).optional(),
   onlineUrl: z.string().url().optional().or(z.literal('')),
 });
 
