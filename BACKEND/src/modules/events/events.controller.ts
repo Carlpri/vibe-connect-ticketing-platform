@@ -127,7 +127,7 @@ export class EventsController {
    */
   static async uploadStandaloneFlyer(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const result = await EventsService.uploadStandaloneFlyer(req.body);
+      const result = await EventsService.uploadStandaloneFlyer(req.body.dataUrl);
       sendSuccess(res, result, 'Flyer uploaded successfully', 201);
     } catch (error) {
       next(error);

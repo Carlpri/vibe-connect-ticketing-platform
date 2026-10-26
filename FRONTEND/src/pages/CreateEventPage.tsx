@@ -25,6 +25,7 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+
 import toast from 'react-hot-toast';
 
 import { eventService } from '../services/eventService';
@@ -81,6 +82,42 @@ const VENUE_PRESETS = [
     address: 'Parklands Rd, Westlands, Nairobi',
     latitude: -1.2644,
     longitude: 36.8041,
+  },
+  {
+    name: 'Uhuru Gardens',
+    venue: 'Uhuru Gardens National Monument & Museum',
+    city: 'Nairobi',
+    county: 'Nairobi County',
+    address: 'Langata Rd, Nairobi',
+    latitude: -1.3235,
+    longitude: 36.8122,
+  },
+  {
+    name: 'Nyayo Stadium',
+    venue: 'Nyayo National Stadium',
+    city: 'Nairobi',
+    county: 'Nairobi County',
+    address: 'Aerodrome Rd, Nairobi',
+    latitude: -1.3039,
+    longitude: 36.8242,
+  },
+  {
+    name: 'Kasarani Stadium',
+    venue: 'Moi International Sports Centre Kasarani',
+    city: 'Nairobi',
+    county: 'Nairobi County',
+    address: 'Thika Rd, Kasarani, Nairobi',
+    latitude: -1.2267,
+    longitude: 36.8928,
+  },
+  {
+    name: 'PrideInn Flamingo (Mombasa)',
+    venue: 'PrideInn Flamingo Beach Resort',
+    city: 'Mombasa',
+    county: 'Mombasa County',
+    address: 'Serena Rd, Shanzu, Mombasa',
+    latitude: -3.9782,
+    longitude: 39.7547,
   },
 ];
 
@@ -368,9 +405,6 @@ export default function CreateEventPage() {
         capacity: Number(t.capacity),
         isActive: true,
       })),
-      flyers: flyers
-        .filter((f) => f.dataUrl)
-        .map((f, i) => ({ url: f.dataUrl, order: i })),
     };
 
     setSubmitting(true);
@@ -391,9 +425,22 @@ export default function CreateEventPage() {
           address: payload.address,
           latitude: payload.latitude,
           longitude: payload.longitude,
+          placeId: payload.placeId,
+          directions: payload.directions,
           onlineUrl: payload.onlineUrl,
         };
         const res = await eventService.updateEvent(eventId, updatePayload);
+
+        // Upload any new flyers (those with dataUrl but no id yet)
+        const newFlyers = flyers.filter((f) => f.dataUrl && !f.id);
+        if (newFlyers.length > 0) {
+          await Promise.allSettled(
+            newFlyers.map((f, i) =>
+              eventService.uploadEventFlyer(eventId, f.dataUrl!, i)
+            )
+          );
+        }
+
         toast.success('Event updated successfully');
         if (res.data?.slug || res.data?.id) {
           navigate(`/events/${res.data.slug || res.data.id}`);
@@ -401,10 +448,27 @@ export default function CreateEventPage() {
           navigate('/organizer');
         }
       } else {
+        // Create event without flyers (flyers are uploaded as a separate step)
         const res = await eventService.createEvent(payload);
+        const createdEvent = res.data;
+
+        // Upload flyers after event creation
+        const newFlyers = flyers.filter((f) => f.dataUrl);
+        if (newFlyers.length > 0 && createdEvent?.id) {
+          const flyerResults = await Promise.allSettled(
+            newFlyers.map((f, i) =>
+              eventService.uploadEventFlyer(createdEvent.id, f.dataUrl!, i)
+            )
+          );
+          const failedCount = flyerResults.filter((r) => r.status === 'rejected').length;
+          if (failedCount > 0) {
+            toast.error(`${failedCount} flyer(s) failed to upload, but your event was created.`);
+          }
+        }
+
         toast.success('Event published successfully! 🎉');
-        if (res.data?.slug || res.data?.id) {
-          navigate(`/events/${res.data.slug || res.data.id}`);
+        if (createdEvent?.slug || createdEvent?.id) {
+          navigate(`/events/${createdEvent.slug || createdEvent.id}`);
         } else {
           navigate('/organizer');
         }

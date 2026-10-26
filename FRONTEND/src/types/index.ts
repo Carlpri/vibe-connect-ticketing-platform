@@ -197,7 +197,7 @@ export interface CreateEventInput {
   directions?: string;
   onlineUrl?: string;
   ticketTypes: CreateTicketTypeInput[];
-  flyers?: Array<{ url: string; order: number }>;
+  flyers?: string[];
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {}
