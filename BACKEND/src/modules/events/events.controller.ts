@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { EventsService } from './events.service';
+import { TicketsService } from '../tickets/tickets.service';
 import { sendSuccess } from '../../shared/utils/apiResponse';
 import { AuthenticatedRequest, TokenPayload } from '../../shared/types';
 import { env } from '../../config/env';
@@ -187,6 +188,54 @@ export class EventsController {
       const flyerId = req.params.flyerId as string;
       const result = await EventsService.deleteFlyer(id, flyerId, req.user!);
       sendSuccess(res, result, 'Event flyer deleted successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/events/:id/check-in
+   * Validates attendee QR or ticket identifier for this event and admits them.
+   */
+  static async checkInTicket(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const eventId = req.params.id as string;
+      const identifier = (req.body.identifier || req.body.qrCode || '').trim();
+      const result = await TicketsService.checkInTicketForEvent({
+        eventId,
+        identifier,
+        scannedByUserId: req.user!.userId,
+        userRole: req.user!.role,
+      });
+
+      if (result.outcome === 'UNAUTHORIZED') {
+        res.status(403).json({
+          success: false,
+          message: result.message,
+          data: result,
+        });
+        return;
+      }
+
+      sendSuccess(res, result, result.message, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/events/:id/check-in/stats
+   * Retrieves admission numbers and scan history for gate operators.
+   */
+  static async getCheckInStats(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const eventId = req.params.id as string;
+      const stats = await TicketsService.getEventCheckInStats({
+        eventId,
+        userId: req.user!.userId,
+        userRole: req.user!.role,
+      });
+      sendSuccess(res, stats, 'Check-in statistics retrieved successfully', 200);
     } catch (error) {
       next(error);
     }

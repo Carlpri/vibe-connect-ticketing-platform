@@ -11,6 +11,7 @@ import {
   uploadFlyerSchema,
   reorderFlyersSchema,
 } from './events.schemas';
+import { checkInTicketSchema } from '../tickets/tickets.schemas';
 
 // ===========================================
 // Events Module — Routes
@@ -130,6 +131,25 @@ router.delete(
   requireRole('ORGANIZER', 'ADMIN'),
   validateParams(eventIdParamSchema),
   EventsController.deleteEvent
+);
+
+// Gate Admission & Ticket Check-In
+router.post(
+  '/:id/check-in',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  validateParams(eventIdParamSchema),
+  validateBody(checkInTicketSchema),
+  EventsController.checkInTicket
+);
+
+// Gate Attendance Stats & History
+router.get(
+  '/:id/check-in/stats',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  validateParams(eventIdParamSchema),
+  EventsController.getCheckInStats
 );
 
 export default router;

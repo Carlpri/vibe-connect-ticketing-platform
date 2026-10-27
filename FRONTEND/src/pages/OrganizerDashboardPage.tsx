@@ -28,6 +28,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import PlaceIcon from '@mui/icons-material/Place';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -729,6 +730,21 @@ export default function OrganizerDashboardPage() {
                         {eventPeriod === 'past' ? 'View Event Details' : 'View Public Page'}
                       </Button>
                       <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
+                        <Tooltip title="Open Gate Scanner — Admit attendees">
+                          <IconButton
+                            component={Link}
+                            to={`/organizer/events/${event.id}/check-in`}
+                            size="small"
+                            sx={{
+                              color: '#fff',
+                              bgcolor: colors.ink,
+                              borderRadius: '8px',
+                              '&:hover': { bgcolor: 'rgba(14,16,19,0.80)' },
+                            }}
+                          >
+                            <QrCodeScannerIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Edit event details">
                           <IconButton
                             component={Link}

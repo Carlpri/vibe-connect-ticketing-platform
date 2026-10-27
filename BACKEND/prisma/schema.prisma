@@ -83,6 +83,7 @@ model User {
   tickets           Ticket[]
   promoCodesCreated PromoCode[]
   promoCodeUsages   PromoCodeUsage[]
+  checkInLogs       CheckInLog[]
 
   @@index([emailVerificationTokenHash])
   @@index([passwordResetTokenHash])
@@ -143,6 +144,7 @@ model Event {
   flyers      EventFlyer[]
   orders      Order[]
   promoCodes  PromoCode[]
+  checkInLogs CheckInLog[]
 
   @@index([status, startsAt])
   @@index([category, status])
@@ -261,6 +263,7 @@ model Ticket {
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
   event      Event      @relation(fields: [eventId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
+  checkInLogs CheckInLog[]
 
   @@unique([orderItemId, serialNumber])
   @@index([userId, createdAt])
@@ -383,5 +386,38 @@ model PlatformConfig {
   updatedByUserId    String?  @db.Uuid
 
   @@map("platform_config")
+}
+
+// -------------------------------------------------------------
+// Admission & Check-in Audit Logs
+// -------------------------------------------------------------
+enum CheckInOutcome {
+  VALID
+  ALREADY_USED
+  EXPIRED
+  INVALID
+  PAYMENT_PENDING
+  CANCELLED
+  UNAUTHORIZED
+}
+
+model CheckInLog {
+  id          String         @id @default(uuid()) @db.Uuid
+  eventId     String         @db.Uuid
+  ticketId    String?        @db.Uuid
+  scannedById String         @db.Uuid
+  outcome     CheckInOutcome
+  ticketCode  String?
+  notes       String?
+  scannedAt   DateTime       @default(now()) @db.Timestamptz
+
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticket    Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  scannedBy User    @relation(fields: [scannedById], references: [id])
+
+  @@index([eventId, scannedAt])
+  @@index([ticketId])
+  @@index([scannedById])
+  @@map("check_in_logs")
 }
 

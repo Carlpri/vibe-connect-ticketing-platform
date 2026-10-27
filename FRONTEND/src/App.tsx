@@ -24,6 +24,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
+import OrganizerCheckInPage from './pages/OrganizerCheckInPage';
 import CreateEventPage from './pages/CreateEventPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LegalDocumentPage from './pages/legal/LegalDocumentPage';
@@ -83,6 +84,14 @@ export default function App() {
                   element={
                     <ProtectedRoute requiredRoles={['ORGANIZER', 'ADMIN']}>
                       <CreateEventPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organizer/events/:eventId/check-in"
+                  element={
+                    <ProtectedRoute requiredRoles={['ORGANIZER', 'ADMIN']}>
+                      <OrganizerCheckInPage />
                     </ProtectedRoute>
                   }
                 />

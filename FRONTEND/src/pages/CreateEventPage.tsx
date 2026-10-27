@@ -25,6 +25,9 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import MapIcon from '@mui/icons-material/Map';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import toast from 'react-hot-toast';
 
@@ -33,6 +36,7 @@ import type { CreateEventInput, CreateTicketTypeInput, EventFormat, EventStatus,
 import { colors } from '../styles/theme';
 import { getApiErrorMessage } from '../utils/format';
 import { useAuth } from '../contexts/AuthContext';
+import LocationMapPicker, { type LocationDetails } from '../components/common/LocationMapPicker';
 
 const CATEGORIES = [
   'Music',
@@ -166,6 +170,9 @@ export default function CreateEventPage() {
   const [flyers, setFlyers] = useState<Array<{ dataUrl: string; preview: string; id?: string }>>([]);
   const [flyerUploading, setFlyerUploading] = useState(false);
   const flyerInputRef = useRef<HTMLInputElement>(null);
+
+  // Map picker visibility
+  const [showMap, setShowMap] = useState(true);
 
   // Ticket Tiers
   const [ticketTypes, setTicketTypes] = useState<CreateTicketTypeInput[]>([
@@ -333,8 +340,22 @@ export default function CreateEventPage() {
     setAddress(preset.address);
     setLatitude(preset.latitude);
     setLongitude(preset.longitude);
+    setShowMap(true);
     toast.success(`Loaded coordinates for ${preset.name}`);
   };
+
+  const handleMapLocationChange = (lat: number, lng: number, details?: LocationDetails) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    // Auto-fill form fields from reverse geocoding — only overwrite empty fields
+    if (details) {
+      if (details.address && !address.trim()) setAddress(details.address);
+      if (details.city && !city.trim()) setCity(details.city);
+      if (details.county && !county.trim()) setCounty(details.county);
+      if (details.venue && !venue.trim()) setVenue(details.venue);
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -805,6 +826,68 @@ export default function CreateEventPage() {
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="e.g. Pio Gama Pinto Rd, Westlands"
                   />
+
+                  {/* Interactive Map Location Picker */}
+                  <Box
+                    sx={{
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '10px',
+                      p: 2,
+                      bgcolor: colors.mutedBg,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 1.5,
+                        mb: showMap ? 2 : 0,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MapIcon sx={{ color: colors.accent, fontSize: 22 }} />
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: colors.fg }}>
+                            Choose Location on Map
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: colors.mutedFg }}>
+                            Click to pin exact coordinates or search by venue/street
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Button
+                        size="small"
+                        variant={showMap ? 'contained' : 'outlined'}
+                        onClick={() => setShowMap(!showMap)}
+                        endIcon={showMap ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          borderRadius: '8px',
+                          bgcolor: showMap ? colors.accent : 'transparent',
+                          color: showMap ? '#fff' : colors.fg,
+                          borderColor: colors.border,
+                          '&:hover': {
+                            bgcolor: showMap ? colors.accentDark : 'rgba(0,0,0,0.04)',
+                          },
+                        }}
+                      >
+                        {showMap ? 'Hide Map' : 'Select on Interactive Map'}
+                      </Button>
+                    </Box>
+
+                    {showMap && (
+                      <LocationMapPicker
+                        latitude={latitude}
+                        longitude={longitude}
+                        onChange={handleMapLocationChange}
+                      />
+                    )}
+                  </Box>
 
                   <Box
                     sx={{
