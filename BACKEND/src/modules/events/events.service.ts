@@ -1,6 +1,12 @@
 import { prisma } from '../../shared/utils/prisma';
 import { AppError } from '../../shared/errors/AppError';
-import { CreateEventInput, UpdateEventInput, ListEventsQuery, ListAttendeesQuery } from './events.schemas';
+import {
+  CreateEventInput,
+  UpdateEventInput,
+  ListEventsQuery,
+  ListAttendeesQuery,
+  flyerUrlSchema,
+} from './events.schemas';
 import { TokenPayload, UserRole } from '../../shared/types';
 import { Prisma } from '@prisma/client';
 import { parseAndValidateBase64Image, saveImageToUploads } from '../../shared/utils/imageUpload';
@@ -11,16 +17,22 @@ import { parseAndValidateBase64Image, saveImageToUploads } from '../../shared/ut
  * each ticketType gaining a computed `available` field.
  */
 function formatEventForClient(event: any) {
-  const { organizer, ticketTypes, flyers, ...rest } = event;
+  const { organizer, ticketTypes, flyers, coverImage, ...rest } = event;
+  const formattedFlyers = (flyers ?? []).map((f: any) => ({
+    id: f.id,
+    url: f.url,
+    order: f.order,
+    createdAt: f.createdAt,
+  }));
+  const safeCoverImage = flyerUrlSchema.safeParse(coverImage).success
+    ? coverImage
+    : formattedFlyers.find((flyer: any) => flyerUrlSchema.safeParse(flyer.url).success)?.url ?? null;
+
   return {
     ...rest,
+    coverImage: safeCoverImage,
     organizerName: organizer?.name ?? null,
-    flyers: (flyers ?? []).map((f: any) => ({
-      id: f.id,
-      url: f.url,
-      order: f.order,
-      createdAt: f.createdAt,
-    })),
+    flyers: formattedFlyers,
     ticketTypes: (ticketTypes ?? []).map((t: any) => ({
       ...t,
       available: Math.max(0, (t.capacity ?? 0) - (t.sold ?? 0)),

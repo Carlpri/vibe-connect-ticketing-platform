@@ -27,7 +27,7 @@ function normaliseFlyerEntry(val: unknown): unknown {
   return val;
 }
 
-const flyerUrlSchema = z.string().trim().min(1).refine(
+export const flyerUrlSchema = z.string().trim().min(1).refine(
   (value) => {
     if (/^\/uploads\/flyers\/[a-f0-9-]+\.(jpg|png|webp)$/i.test(value)) {
       return true;

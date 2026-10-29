@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createEventSchema, updateEventSchema } from '../modules/events/events.schemas';
+import { createEventSchema, flyerUrlSchema, updateEventSchema } from '../modules/events/events.schemas';
 
 describe('event flyer URL validation', () => {
   const storedFlyerPath = '/uploads/flyers/6e9301d6-7a2c-4e29-9f62-241f485182fe.webp';
@@ -30,5 +30,13 @@ describe('event flyer URL validation', () => {
   it('rejects unsupported paths and non-HTTP external URLs', () => {
     assert.equal(updateEventSchema.safeParse({ coverImage: '/uploads/other/image.webp' }).success, false);
     assert.equal(updateEventSchema.safeParse({ flyers: ['javascript:alert(1)'] }).success, false);
+  });
+
+  it('rejects malformed cover image data instead of exposing it as a flyer URL', () => {
+    assert.equal(
+      flyerUrlSchema.safeParse('{email: "organizer@example.com", callbackUrl: "https://example.com"}').success,
+      false
+    );
+    assert.equal(flyerUrlSchema.safeParse(storedFlyerPath).success, true);
   });
 });
