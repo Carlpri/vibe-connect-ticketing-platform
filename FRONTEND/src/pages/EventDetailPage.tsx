@@ -157,7 +157,7 @@ export default function EventDetailPage() {
         title={event.title}
         description={metaDescription}
         path={`/events/${event.id}`}
-        image={eventCoverUrl(event.coverImage)}
+        image={eventCoverUrl(event.coverImage || event.flyers?.[0]?.url)}
       />
       {/* Breadcrumb Bar */}
       <Container maxWidth="lg" sx={{ pt: 2.5, pb: 1.5 }}>
@@ -196,7 +196,7 @@ export default function EventDetailPage() {
         >
           <Box
             component="img"
-            src={eventCoverUrl(event.coverImage)}
+            src={eventCoverUrl(event.coverImage || event.flyers?.[0]?.url)}
             alt={event.title}
             sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
@@ -531,7 +531,7 @@ export default function EventDetailPage() {
                           sx={{
                             width: '100%',
                             height: '100%',
-                            objectFit: 'cover',
+                            objectFit: 'contain',
                           }}
                         />
                         <Box

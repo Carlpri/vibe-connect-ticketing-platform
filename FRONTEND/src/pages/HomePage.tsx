@@ -391,7 +391,7 @@ export default function HomePage() {
               }}
             >
               {events.map((evt) => {
-                const flyerUrl = formatFlyerUrl(evt.flyers?.[0] || evt.coverImage);
+                const flyerUrl = formatFlyerUrl(evt.flyers?.[0]?.url || evt.coverImage);
                 const minPrice = evt.ticketTypes?.length
                   ? Math.min(...evt.ticketTypes.map((t) => t.priceKes))
                   : 0;
@@ -422,7 +422,7 @@ export default function HomePage() {
                         component="img"
                         src={flyerUrl}
                         alt={evt.title}
-                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                       <Box
                         sx={{
