@@ -38,7 +38,7 @@ import { formatDate, formatKes } from '../utils/format';
 import type { Event } from '../types';
 import { colors } from '../styles/theme';
 import PageMeta from '../components/common/PageMeta';
-import { eventCoverUrl, formatFlyerUrl } from '../utils/eventMedia';
+import { eventCoverUrl, formatFlyerUrl, isEventMediaUrl } from '../utils/eventMedia';
 import { AnalyticsEvents } from '../utils/analytics';
 
 export default function EventDetailPage() {
@@ -140,7 +140,7 @@ export default function EventDetailPage() {
   const allFlyers: string[] = [
     ...(event.flyers || []).map((flyer) => flyer.url),
     ...(event.coverImage ? [event.coverImage] : [])
-  ].filter((f, idx, arr) => Boolean(f) && arr.indexOf(f) === idx);
+  ].filter((flyer, index, list) => isEventMediaUrl(flyer) && list.indexOf(flyer) === index);
 
   const scrollToTickets = () => {
     const el = document.getElementById('ticket-selection-area');
@@ -157,7 +157,7 @@ export default function EventDetailPage() {
         title={event.title}
         description={metaDescription}
         path={`/events/${event.id}`}
-        image={eventCoverUrl(event.coverImage || event.flyers?.[0]?.url)}
+        image={eventCoverUrl(event.coverImage, event.flyers?.[0]?.url)}
       />
       {/* Breadcrumb Bar */}
       <Container maxWidth="lg" sx={{ pt: 2.5, pb: 1.5 }}>
@@ -196,7 +196,7 @@ export default function EventDetailPage() {
         >
           <Box
             component="img"
-            src={eventCoverUrl(event.coverImage || event.flyers?.[0]?.url)}
+            src={eventCoverUrl(event.coverImage, event.flyers?.[0]?.url)}
             alt={event.title}
             sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />

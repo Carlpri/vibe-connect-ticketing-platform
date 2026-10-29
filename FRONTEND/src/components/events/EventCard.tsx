@@ -34,7 +34,7 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
     : 0;
 
   const priceText = minPrice > 0 ? `FROM ${formatKes(minPrice)}` : 'FREE • KES 0';
-  const coverUrl = eventCoverUrl(event.coverImage || event.flyers?.[0]?.url);
+  const coverUrl = eventCoverUrl(event.coverImage, event.flyers?.[0]?.url);
 
   const handleOpenFlyer = (e: React.MouseEvent) => {
     e.preventDefault();

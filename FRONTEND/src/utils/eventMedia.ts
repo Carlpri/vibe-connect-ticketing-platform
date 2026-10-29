@@ -5,20 +5,38 @@ export const DEFAULT_EVENT_POSTER =
 const rawApiUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').trim().replace(/\/+$/, '');
 const backendOrigin = rawApiUrl.replace(/\/api$/, '');
 
-export function eventCoverUrl(coverImage?: string | null): string {
-  if (!coverImage || !coverImage.trim()) return DEFAULT_EVENT_POSTER;
-  const url = coverImage.trim();
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+const STORED_FLYER_PATH = /^\/uploads\/flyers\/[a-f0-9-]+\.(?:jpe?g|png|webp)$/i;
+
+function resolveEventMediaUrl(value?: string | null): string | null {
+  const url = value?.trim();
+  if (!url) return null;
+
+  if (/^data:image\/(?:jpeg|png|webp);base64,/i.test(url)) {
     return url;
   }
-  return `${backendOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
+
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+      return url;
+    }
+  } catch {
+    if (STORED_FLYER_PATH.test(url)) {
+      return `${backendOrigin}${url}`;
+    }
+  }
+
+  return null;
+}
+
+export function isEventMediaUrl(value?: string | null): boolean {
+  return resolveEventMediaUrl(value) !== null;
+}
+
+export function eventCoverUrl(coverImage?: string | null, fallbackImage?: string | null): string {
+  return resolveEventMediaUrl(coverImage) ?? resolveEventMediaUrl(fallbackImage) ?? DEFAULT_EVENT_POSTER;
 }
 
 export function formatFlyerUrl(url?: string | null): string {
-  if (!url || !url.trim()) return DEFAULT_EVENT_POSTER;
-  const trimmed = url.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-    return trimmed;
-  }
-  return `${backendOrigin}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
+  return resolveEventMediaUrl(url) ?? DEFAULT_EVENT_POSTER;
 }

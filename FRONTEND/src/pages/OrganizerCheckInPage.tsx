@@ -33,7 +33,6 @@ import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import SearchIcon from '@mui/icons-material/Search';
 
 import { Html5Qrcode } from 'html5-qrcode';
 import toast from 'react-hot-toast';
@@ -175,8 +174,13 @@ export default function OrganizerCheckInPage() {
         status: attendeeFilter,
         limit: 100,
       });
-      setAttendees(res.data.items);
-      setAttendeeCounts(res.data.counts);
+      setAttendees(res.data.attendees);
+      setAttendeeCounts({
+        totalIssued: res.data.counts.totalIssued,
+        checkedIn: res.data.counts.checkedIn,
+        notCheckedIn: res.data.counts.notCheckedIn,
+        percentage: res.data.counts.percentage,
+      });
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
@@ -202,11 +206,11 @@ export default function OrganizerCheckInPage() {
     const rows = attendees.map((a) => [
       `"${(a.attendeeName || 'Attendee').replace(/"/g, '""')}"`,
       `"${(a.attendeeEmail || '').replace(/"/g, '""')}"`,
-      `"${a.ticketNumber}"`,
-      `"${(a.ticketType?.name || 'General').replace(/"/g, '""')}"`,
+      `"${a.ticketCode}"`,
+      `"${a.ticketType.replace(/"/g, '""')}"`,
       a.status,
       a.checkedInAt ? new Date(a.checkedInAt).toLocaleString() : 'N/A',
-      new Date(a.createdAt).toLocaleString(),
+      new Date(a.registeredAt).toLocaleString(),
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -818,6 +822,81 @@ export default function OrganizerCheckInPage() {
                         {processing ? <CircularProgress size={20} sx={{ color: colors.limeFg }} /> : 'Validate'}
                       </Button>
                     </Box>
+                  </Box>
+                ) : (
+                  <Box sx={{ py: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: colors.fg }}>
+                          {attendeeCounts.totalIssued} tickets · {attendeeCounts.checkedIn} checked in · {attendeeCounts.notCheckedIn} remaining
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: colors.mutedFg }}>
+                          {attendeeCounts.percentage}% attendance
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        startIcon={<FileDownloadIcon />}
+                        onClick={handleExportCsv}
+                        disabled={attendees.length === 0}
+                        sx={{ textTransform: 'none', fontWeight: 700 }}
+                      >
+                        Export CSV
+                      </Button>
+                    </Box>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={attendeeSearch}
+                      onChange={(e) => setAttendeeSearch(e.target.value)}
+                      placeholder="Search attendees by name, email, or ticket code"
+                      sx={{ mb: 1.5 }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                      {(['ALL', 'CHECKED_IN', 'NOT_CHECKED_IN', 'VOID'] as const).map((filter) => (
+                        <Chip
+                          key={filter}
+                          label={filter.replaceAll('_', ' ')}
+                          clickable
+                          color={attendeeFilter === filter ? 'primary' : 'default'}
+                          variant={attendeeFilter === filter ? 'filled' : 'outlined'}
+                          onClick={() => setAttendeeFilter(filter)}
+                        />
+                      ))}
+                    </Box>
+                    {attendeesLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                        <CircularProgress size={26} sx={{ color: colors.lime }} />
+                      </Box>
+                    ) : attendees.length === 0 ? (
+                      <Typography variant="body2" sx={{ color: colors.mutedFg, py: 3, textAlign: 'center' }}>
+                        No attendees match this search and status.
+                      </Typography>
+                    ) : (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 420, overflowY: 'auto' }}>
+                        {attendees.map((attendee) => (
+                          <Paper
+                            key={attendee.ticketId}
+                            variant="outlined"
+                            sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
+                          >
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: colors.fg }}>
+                                {attendee.attendeeName}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: colors.mutedFg }}>
+                                {attendee.attendeeEmail} · {attendee.ticketType} · {attendee.ticketCode}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              size="small"
+                              label={attendee.status.replaceAll('_', ' ')}
+                              color={attendee.status === 'CHECKED_IN' ? 'success' : attendee.status === 'VOID' ? 'error' : 'default'}
+                            />
+                          </Paper>
+                        ))}
+                      </Box>
+                    )}
                   </Box>
                 )}
               </CardContent>
