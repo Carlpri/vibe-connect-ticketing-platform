@@ -148,6 +148,10 @@ export interface Event {
   placeId?: string;
   directions?: string;
   onlineUrl?: string;
+  theme?: string;
+  bibleVerse?: string;
+  dressCode?: string;
+  edition?: string;
   startsAt: string;
   endsAt?: string;
   status: EventStatus;
@@ -196,6 +200,10 @@ export interface CreateEventInput {
   placeId?: string;
   directions?: string;
   onlineUrl?: string;
+  theme?: string;
+  bibleVerse?: string;
+  dressCode?: string;
+  edition?: string;
   ticketTypes: CreateTicketTypeInput[];
   flyers?: string[];
 }
@@ -432,4 +440,42 @@ export interface CartItem {
 export interface Cart {
   event: Event;
   items: CartItem[];
+}
+
+export interface AttendeeListItem {
+  ticketId: string;
+  serialNumber: number;
+  ticketCode: string;
+  ticketType: string;
+  priceKes: number;
+  attendeeName: string;
+  attendeeEmail: string;
+  attendeePhone: string | null;
+  status: 'ISSUED' | 'CHECKED_IN' | 'VOID';
+  checkedInAt: string | null;
+  registeredAt: string;
+  orderId: string;
+}
+
+export interface EventAttendeesResponse {
+  event: {
+    id: string;
+    title: string;
+    venue: string | null;
+    startsAt: string;
+  };
+  counts: {
+    totalIssued: number;
+    checkedIn: number;
+    notCheckedIn: number;
+    void: number;
+    percentage: number;
+  };
+  attendees: AttendeeListItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }

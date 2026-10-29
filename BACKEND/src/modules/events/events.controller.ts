@@ -224,6 +224,26 @@ export class EventsController {
   }
 
   /**
+   * GET /api/events/:id/attendees
+   * Retrieves registered attendee roster for event organizer or admin.
+   */
+  static async getEventAttendees(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const eventId = req.params.id as string;
+      const result = await EventsService.getEventAttendees(eventId, req.user!, req.query as any);
+
+      res.setHeader('X-Total-Count', result.pagination.total.toString());
+      res.setHeader('X-Page', result.pagination.page.toString());
+      res.setHeader('X-Limit', result.pagination.limit.toString());
+      res.setHeader('X-Total-Pages', result.pagination.totalPages.toString());
+
+      sendSuccess(res, result, 'Event attendees retrieved successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * GET /api/events/:id/check-in/stats
    * Retrieves admission numbers and scan history for gate operators.
    */

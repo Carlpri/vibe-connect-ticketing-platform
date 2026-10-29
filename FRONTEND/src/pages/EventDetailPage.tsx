@@ -9,6 +9,9 @@ import {
   IconButton,
   Paper,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -21,6 +24,12 @@ import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import DirectionsIcon from '@mui/icons-material/Directions';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import LinkIcon from '@mui/icons-material/Link';
+import CloseIcon from '@mui/icons-material/Close';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CheckroomIcon from '@mui/icons-material/Checkroom';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import DownloadIcon from '@mui/icons-material/Download';
 import TicketSelector from '../components/events/TicketSelector';
 import EmptyState from '../components/common/EmptyState';
 import { eventService } from '../services/eventService';
@@ -29,7 +38,7 @@ import { formatDate, formatKes } from '../utils/format';
 import type { Event } from '../types';
 import { colors } from '../styles/theme';
 import PageMeta from '../components/common/PageMeta';
-import { eventCoverUrl } from '../utils/eventMedia';
+import { eventCoverUrl, formatFlyerUrl } from '../utils/eventMedia';
 import { AnalyticsEvents } from '../utils/analytics';
 
 export default function EventDetailPage() {
@@ -41,6 +50,7 @@ export default function EventDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [saved, setSaved] = useState(false);
+  const [previewFlyerUrl, setPreviewFlyerUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchEvent() {
@@ -93,6 +103,11 @@ export default function EventDetailPage() {
       })
     );
 
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent('/checkout')}`);
+      return;
+    }
+
     navigate('/checkout');
   };
 
@@ -121,6 +136,11 @@ export default function EventDetailPage() {
   const minPrice = event.ticketTypes?.length
     ? Math.min(...event.ticketTypes.map((t) => t.priceKes))
     : 0;
+
+  const allFlyers: string[] = [
+    ...(event.flyers || []).map((flyer) => flyer.url),
+    ...(event.coverImage ? [event.coverImage] : [])
+  ].filter((f, idx, arr) => Boolean(f) && arr.indexOf(f) === idx);
 
   const scrollToTickets = () => {
     const el = document.getElementById('ticket-selection-area');
@@ -178,69 +198,9 @@ export default function EventDetailPage() {
             component="img"
             src={eventCoverUrl(event.coverImage)}
             alt={event.title}
-            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
 
-          {/* Dark gradient overlay */}
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(to top, rgba(14, 16, 19, 0.85) 0%, rgba(14, 16, 19, 0.2) 60%, transparent 100%)',
-            }}
-          />
-
-          {/* Badges near bottom-left of photo */}
-          <Box sx={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {event.category && (
-              <Box
-                sx={{
-                  bgcolor: colors.lime,
-                  color: colors.limeFg,
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: '6px',
-                  fontWeight: 800,
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {event.category}
-              </Box>
-            )}
-            {minPrice === 0 ? (
-              <Box
-                sx={{
-                  bgcolor: colors.success,
-                  color: '#fff',
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: '6px',
-                  fontWeight: 800,
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                }}
-              >
-                FREE ADMISSION
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  bgcolor: 'rgba(28, 25, 22, 0.75)',
-                  backdropFilter: 'blur(8px)',
-                  color: colors.inkFg,
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                }}
-              >
-                FROM {formatKes(minPrice)}
-              </Box>
-            )}
-          </Box>
         </Box>
       </Container>
 
@@ -258,6 +218,22 @@ export default function EventDetailPage() {
           }}
         >
           <Box sx={{ maxWidth: 800 }}>
+            {event.edition && (
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 900,
+                  letterSpacing: '0.12em',
+                  color: colors.coral,
+                  textTransform: 'uppercase',
+                  display: 'block',
+                  mb: 0.8,
+                  fontSize: '0.85rem',
+                }}
+              >
+                {event.edition}
+              </Typography>
+            )}
             <Typography
               component="h1"
               sx={{
@@ -384,6 +360,51 @@ export default function EventDetailPage() {
                   </Typography>
                 </Box>
               </Box>
+
+              {/* Theme (if applicable) */}
+              {event.theme && (
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                  <AutoAwesomeIcon sx={{ color: colors.lime, fontSize: 24, mt: 0.2 }} />
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg }}>
+                      EVENT THEME
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 700, color: colors.fg }}>
+                      {event.theme}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
+              {/* Bible Verse / Scripture (if applicable) */}
+              {event.bibleVerse && (
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                  <MenuBookIcon sx={{ color: colors.coral, fontSize: 24, mt: 0.2 }} />
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg }}>
+                      SCRIPTURE / INSPIRATION
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 700, color: colors.fg }}>
+                      {event.bibleVerse}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
+              {/* Dress Code (if applicable) */}
+              {event.dressCode && (
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                  <CheckroomIcon sx={{ color: colors.limeFg, fontSize: 24, mt: 0.2 }} />
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: colors.mutedFg }}>
+                      DRESS CODE
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 700, color: colors.fg }}>
+                      {event.dressCode}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
             </Paper>
 
             {/* About / Description */}
@@ -448,6 +469,95 @@ export default function EventDetailPage() {
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, color: colors.fg }}>
                     {event.organizerName}
                   </Typography>
+                </Box>
+              </Box>
+            )}
+
+            {/* ── Official Flyers & Posters Gallery ── */}
+            {allFlyers.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontFamily: '"Archivo Black", sans-serif',
+                      fontSize: '1.25rem',
+                      textTransform: 'uppercase',
+                      color: colors.fg,
+                    }}
+                  >
+                    OFFICIAL POSTERS & FLYERS
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: colors.mutedFg, fontWeight: 700 }}>
+                    Click to view full size
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                    gap: 2,
+                  }}
+                >
+                  {allFlyers.map((flyer, index) => {
+                    const fullUrl = formatFlyerUrl(flyer);
+                    return (
+                      <Paper
+                        key={index}
+                        elevation={0}
+                        onClick={() => setPreviewFlyerUrl(fullUrl)}
+                        sx={{
+                          position: 'relative',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: `1px solid ${colors.border}`,
+                          cursor: 'pointer',
+                          aspectRatio: '3/4',
+                          bgcolor: '#1C1916',
+                          transition: 'all 0.25s ease',
+                          '&:hover': {
+                            transform: 'translateY(-3px)',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                            borderColor: colors.lime,
+                            '& .flyer-overlay': { opacity: 1 },
+                          },
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={fullUrl}
+                          alt={`${event.title} Poster ${index + 1}`}
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                        <Box
+                          className="flyer-overlay"
+                          sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            bgcolor: 'rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 1,
+                            opacity: 0,
+                            transition: 'opacity 0.2s ease',
+                            color: '#fff',
+                          }}
+                        >
+                          <VisibilityIcon sx={{ fontSize: 28, color: colors.lime }} />
+                          <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            View Poster
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    );
+                  })}
                 </Box>
               </Box>
             )}
@@ -721,9 +831,70 @@ export default function EventDetailPage() {
             '&:hover': { bgcolor: colors.limeLt },
           }}
         >
-          {minPrice === 0 ? 'Reserve Spot' : 'Get Tickets'}
+          {minPrice === 0 ? 'Get Free Ticket' : 'Get Tickets'}
         </Button>
       </Box>
+      {/* Flyer Full-Screen Preview Dialog */}
+      <Dialog
+        open={Boolean(previewFlyerUrl)}
+        onClose={() => setPreviewFlyerUrl(null)}
+        maxWidth="md"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: '#0E1013',
+              color: '#fff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.15)',
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 3, py: 2 }}>
+          <Box>
+            <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: colors.lime }}>
+              {event.title} {event.edition ? `• ${event.edition}` : ''}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+              Official Promotional Flyer & Poster
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {previewFlyerUrl && (
+              <IconButton
+                component="a"
+                href={previewFlyerUrl}
+                target="_blank"
+                download
+                sx={{ color: '#fff', '&:hover': { color: colors.lime } }}
+                title="Open / Download Full Size"
+              >
+                <DownloadIcon />
+              </IconButton>
+            )}
+            <IconButton onClick={() => setPreviewFlyerUrl(null)} sx={{ color: '#fff' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#000' }}>
+          {previewFlyerUrl && (
+            <Box
+              component="img"
+              src={previewFlyerUrl}
+              alt="Official Event Flyer"
+              sx={{
+                maxWidth: '100%',
+                maxHeight: '80vh',
+                objectFit: 'contain',
+                borderRadius: '6px',
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

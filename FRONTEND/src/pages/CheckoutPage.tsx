@@ -128,6 +128,7 @@ export default function CheckoutPage() {
   const discountKes = promoResult ? promoResult.discountKes : 0;
   const serviceFeeKes = subtotalKes > 0 ? 50 : 0;
   const grandTotalKes = Math.max(0, subtotalKes - discountKes + serviceFeeKes);
+  const isFree = grandTotalKes === 0;
 
   const handleApplyPromoCode = async () => {
     if (!promoCodeInput.trim()) return;
@@ -161,11 +162,11 @@ export default function CheckoutPage() {
       setBookingError('Sign in before reserving tickets.');
       return;
     }
-    if (!hasVerifiedContact) {
+    if (!isFree && !hasVerifiedContact) {
       setBookingError('Verify your email or phone number before purchasing tickets.');
       return;
     }
-    if (backendOrderId) {
+    if (backendOrderId && !isFree) {
       setPaymentModalOpen(true);
       return;
     }
@@ -189,6 +190,20 @@ export default function CheckoutPage() {
         items,
         promoCode: promoResult?.code || undefined,
       });
+
+      // Free orders are immediately PAID and tickets are issued on the server
+      if (response.data.totalKes === 0 || response.data.status === 'PAID') {
+        sessionStorage.removeItem('vibe_connect_cart');
+        navigate('/order-confirmation', {
+          state: {
+            orderId: response.data.id,
+            order: response.data,
+            isFreeRegistration: true,
+          },
+        });
+        return;
+      }
+
       setBackendOrderId(response.data.id);
       setReservationAmount(response.data.totalKes);
       setReservationExpiresAt(response.data.expiresAt);
@@ -234,7 +249,7 @@ export default function CheckoutPage() {
           COMPLETE YOUR ORDER
         </Typography>
 
-        {user && !hasVerifiedContact && (
+        {user && !hasVerifiedContact && !isFree && (
           <VerificationBanner sx={{ mb: 3 }} />
         )}
 
@@ -420,7 +435,7 @@ export default function CheckoutPage() {
               </Box>
             </Paper>
 
-            {/* 3. Payment Method Selection (M-Pesa First) */}
+            {/* 3. Free Registration or Payment Method Selection */}
             <Paper
               elevation={0}
               sx={{
@@ -440,45 +455,71 @@ export default function CheckoutPage() {
                   mb: 2,
                 }}
               >
-                3. PAYMENT AVAILABILITY
+                {isFree ? '3. FREE EVENT REGISTRATION' : '3. PAYMENT AVAILABILITY'}
               </Typography>
 
-              <FormControl component="fieldset" fullWidth>
-                <RadioGroup
-                  value="PAYSTACK"
-                  sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
+              {isFree ? (
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: '8px',
+                    border: `1.5px solid ${colors.lime}`,
+                    bgcolor: 'rgba(51, 199, 89, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
                 >
-                  {/* Paystack (Primary: Card, Mobile Money, M-Pesa) */}
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '8px',
-                      border: `1.5px solid ${colors.lime}`,
-                      bgcolor: 'rgba(51, 199, 89, 0.08)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Radio
-                        checked
-                        value="PAYSTACK"
-                        sx={{ color: colors.lime, '&.Mui-checked': { color: colors.lime } }}
-                      />
-                      <Box>
-                        <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
-                          Paystack (Card, Mobile Money, M-Pesa)
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: colors.mutedFg }}>
-                          Pay securely via Visa, Mastercard, or Mobile Money
-                        </Typography>
-                      </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <CheckCircleIcon sx={{ color: colors.lime }} />
+                    <Box>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
+                        Free Admission — No Payment Required
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: colors.mutedFg }}>
+                        This is a free event. Click below to confirm registration and get your entry pass immediately.
+                      </Typography>
                     </Box>
-                    <CreditCardIcon sx={{ color: colors.lime }} />
                   </Box>
-                </RadioGroup>
-              </FormControl>
+                </Box>
+              ) : (
+                <FormControl component="fieldset" fullWidth>
+                  <RadioGroup
+                    value="PAYSTACK"
+                    sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
+                  >
+                    {/* Paystack (Primary: Card, Mobile Money, M-Pesa) */}
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: '8px',
+                        border: `1.5px solid ${colors.lime}`,
+                        bgcolor: 'rgba(51, 199, 89, 0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Radio
+                          checked
+                          value="PAYSTACK"
+                          sx={{ color: colors.lime, '&.Mui-checked': { color: colors.lime } }}
+                        />
+                        <Box>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: colors.fg }}>
+                            Paystack (Card, Mobile Money, M-Pesa)
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: colors.mutedFg }}>
+                            Pay securely via Visa, Mastercard, or Mobile Money
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <CreditCardIcon sx={{ color: colors.lime }} />
+                    </Box>
+                  </RadioGroup>
+                </FormControl>
+              )}
             </Paper>
           </Box>
 
@@ -659,7 +700,7 @@ export default function CheckoutPage() {
               </Alert>
             )}
 
-            {!hasVerifiedContact && user && (
+            {!hasVerifiedContact && user && !isFree && (
               <Box
                 sx={{
                   mb: 2.5,
@@ -754,7 +795,7 @@ export default function CheckoutPage() {
               </Box>
             )}
 
-            {backendOrderId && (
+            {backendOrderId && !isFree && (
               <Alert severity="info" sx={{ mb: 2 }}>
                 Reservation {backendOrderId} is unpaid and expires at{' '}
                 {reservationExpiresAt ? formatDate(reservationExpiresAt) : 'the displayed reservation deadline'}.
@@ -784,9 +825,26 @@ export default function CheckoutPage() {
               }}
             >
               {reserving
-                ? 'Creating Reservation…'
-                : backendOrderId ? 'Continue to Paystack' : 'Reserve and Pay with Paystack'}
+                ? (isFree ? 'Issuing Free Ticket…' : 'Creating Reservation…')
+                : isFree
+                  ? 'Confirm Free Registration & Get Ticket'
+                  : backendOrderId ? 'Continue to Paystack' : 'Reserve and Pay with Paystack'}
             </Button>
+
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'rgba(250, 247, 242, 0.5)',
+                display: 'block',
+                textAlign: 'center',
+                mt: 2,
+                fontSize: '0.75rem',
+              }}
+            >
+              {isFree
+                ? 'Free event registration. Your unique ticket with gate check-in QR code will be generated immediately.'
+                : 'A reservation is not a paid purchase. Tickets are issued only after Paystack verifies the payment.'}
+            </Typography>
 
             <Typography
               variant="caption"
@@ -805,7 +863,7 @@ export default function CheckoutPage() {
       </Container>
 
       <PaymentModal
-        open={paymentModalOpen}
+        open={paymentModalOpen && !isFree}
         onClose={() => setPaymentModalOpen(false)}
         amountKes={reservationAmount ?? grandTotalKes}
         orderId={backendOrderId || undefined}

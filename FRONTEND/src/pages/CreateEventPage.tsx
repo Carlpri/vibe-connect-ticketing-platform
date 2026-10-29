@@ -35,6 +35,7 @@ import { eventService } from '../services/eventService';
 import type { CreateEventInput, CreateTicketTypeInput, EventFormat, EventStatus, UpdateEventInput } from '../types';
 import { colors } from '../styles/theme';
 import { getApiErrorMessage } from '../utils/format';
+import { formatFlyerUrl } from '../utils/eventMedia';
 import { useAuth } from '../contexts/AuthContext';
 import LocationMapPicker, { type LocationDetails } from '../components/common/LocationMapPicker';
 
@@ -142,6 +143,10 @@ export default function CreateEventPage() {
   const [format, setFormat] = useState<EventFormat>('PHYSICAL');
   const [status, setStatus] = useState<EventStatus>(canPublish ? 'PUBLISHED' : 'DRAFT');
   const [coverImage, setCoverImage] = useState('');
+  const [edition, setEdition] = useState('');
+  const [themeName, setThemeName] = useState('');
+  const [bibleVerse, setBibleVerse] = useState('');
+  const [dressCode, setDressCode] = useState('');
 
   // Default dates: starts tomorrow at 6 PM, ends at 11 PM
   const tomorrow = new Date();
@@ -221,9 +226,22 @@ export default function CreateEventPage() {
         setOnlineUrl(event.onlineUrl || '');
         setPlaceId((event as any).placeId || '');
         setDirections((event as any).directions || '');
-        if (event.flyers && event.flyers.length > 0) {
-          setFlyers(event.flyers.map((f) => ({ dataUrl: '', preview: f.url, id: f.id })));
+        setEdition(event.edition || '');
+        setThemeName(event.theme || '');
+        setBibleVerse(event.bibleVerse || '');
+        setDressCode(event.dressCode || '');
+        const existingFlyers: Array<{ dataUrl: string; preview: string; id?: string }> = (event.flyers || []).map((flyer) => ({
+          dataUrl: '',
+          preview: flyer.url,
+          id: flyer.id,
+        }));
+        const coverIndex = existingFlyers.findIndex((flyer) => flyer.preview === event.coverImage);
+        if (event.coverImage && coverIndex === -1) {
+          existingFlyers.unshift({ dataUrl: '', preview: event.coverImage });
+        } else if (coverIndex > 0) {
+          existingFlyers.unshift(existingFlyers.splice(coverIndex, 1)[0]);
         }
+        setFlyers(existingFlyers);
       } catch (err: unknown) {
         if (!cancelled) {
           setError(getApiErrorMessage(err));
@@ -275,40 +293,50 @@ export default function CreateEventPage() {
 
   const handleFlyerFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    if (flyerInputRef.current) flyerInputRef.current.value = '';
     if (flyers.length + files.length > 10) {
       toast.error('Maximum 10 flyers allowed');
       return;
     }
     if (files.length === 0) return;
     setFlyerUploading(true);
-    let pending = files.length;
+    const validFiles: File[] = [];
     files.forEach((file) => {
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
         toast.error(`${file.name}: only JPEG, PNG, or WebP allowed`);
-        pending -= 1;
-        if (pending === 0) setFlyerUploading(false);
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
         toast.error(`${file.name}: max 5 MB per flyer`);
-        pending -= 1;
-        if (pending === 0) setFlyerUploading(false);
         return;
       }
+      validFiles.push(file);
+    });
+
+    if (validFiles.length === 0) {
+      setFlyerUploading(false);
+      return;
+    }
+
+    Promise.all(validFiles.map((file) => new Promise<{ dataUrl: string; preview: string } | null>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const dataUrl = reader.result as string;
-        setFlyers((prev) => [...prev, { dataUrl, preview: dataUrl }]);
-        pending -= 1;
-        if (pending === 0) setFlyerUploading(false);
+        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) {
+          toast.error(`${file.name}: could not read this image`);
+          resolve(null);
+          return;
+        }
+        resolve({ dataUrl, preview: dataUrl });
       };
       reader.onerror = () => {
-        pending -= 1;
-        if (pending === 0) setFlyerUploading(false);
+        toast.error(`${file.name}: could not read this image`);
+        resolve(null);
       };
       reader.readAsDataURL(file);
-    });
-    if (flyerInputRef.current) flyerInputRef.current.value = '';
+    }))).then((results) => {
+      setFlyers((prev) => [...prev, ...results.filter((result): result is { dataUrl: string; preview: string } => result !== null)]);
+    }).finally(() => setFlyerUploading(false));
   };
 
   const moveFlyerUp = (index: number) => {
@@ -330,7 +358,12 @@ export default function CreateEventPage() {
   };
 
   const removeFlyer = (index: number) => {
-    setFlyers((prev) => prev.filter((_, i) => i !== index));
+    const removed = flyers[index];
+    const remaining = flyers.filter((_, i) => i !== index);
+    setFlyers(remaining);
+    if (removed?.preview === coverImage) {
+      setCoverImage(remaining[0]?.preview || '');
+    }
   };
 
   const applyVenuePreset = (preset: typeof VENUE_PRESETS[0]) => {
@@ -419,6 +452,10 @@ export default function CreateEventPage() {
       placeId: format !== 'ONLINE' && placeId.trim() ? placeId.trim() : undefined,
       directions: format !== 'ONLINE' && directions.trim() ? directions.trim() : undefined,
       onlineUrl: format !== 'PHYSICAL' ? onlineUrl.trim() : undefined,
+      edition: edition.trim() || undefined,
+      theme: themeName.trim() || undefined,
+      bibleVerse: bibleVerse.trim() || undefined,
+      dressCode: dressCode.trim() || undefined,
       ticketTypes: ticketTypes.map((t) => ({
         name: t.name.trim(),
         description: t.description?.trim() || undefined,
@@ -430,12 +467,38 @@ export default function CreateEventPage() {
 
     setSubmitting(true);
     try {
+      const flyerUrls: string[] = [];
+      if (flyers.some((flyer) => flyer.dataUrl)) {
+        setFlyerUploading(true);
+      }
+      try {
+        for (const flyer of flyers) {
+          if (!flyer.dataUrl) {
+            flyerUrls.push(flyer.preview);
+            continue;
+          }
+          const uploaded = await eventService.uploadStandaloneFlyer(flyer.dataUrl);
+          if (!uploaded.data?.url) {
+            throw new Error('The flyer upload did not return an image URL.');
+          }
+          flyerUrls.push(uploaded.data.url);
+        }
+      } finally {
+        setFlyerUploading(false);
+      }
+
+      const manualCoverImage = coverImage.trim();
+      const selectedCoverImage = manualCoverImage && !flyers.some((flyer) => flyer.preview === manualCoverImage)
+        ? manualCoverImage
+        : flyerUrls[0];
+
       if (isEditMode && eventId) {
         const updatePayload: UpdateEventInput = {
           title: payload.title,
           description: payload.description,
           category: payload.category,
-          coverImage: payload.coverImage,
+          coverImage: selectedCoverImage ?? '',
+          flyers: flyerUrls,
           format: payload.format,
           status: payload.status,
           startsAt: payload.startsAt,
@@ -449,18 +512,12 @@ export default function CreateEventPage() {
           placeId: payload.placeId,
           directions: payload.directions,
           onlineUrl: payload.onlineUrl,
+          edition: payload.edition,
+          theme: payload.theme,
+          bibleVerse: payload.bibleVerse,
+          dressCode: payload.dressCode,
         };
         const res = await eventService.updateEvent(eventId, updatePayload);
-
-        // Upload any new flyers (those with dataUrl but no id yet)
-        const newFlyers = flyers.filter((f) => f.dataUrl && !f.id);
-        if (newFlyers.length > 0) {
-          await Promise.allSettled(
-            newFlyers.map((f, i) =>
-              eventService.uploadEventFlyer(eventId, f.dataUrl!, i)
-            )
-          );
-        }
 
         toast.success('Event updated successfully');
         if (res.data?.slug || res.data?.id) {
@@ -469,25 +526,12 @@ export default function CreateEventPage() {
           navigate('/organizer');
         }
       } else {
-        // Create event without flyers (flyers are uploaded as a separate step)
+        payload.flyers = flyerUrls;
+        payload.coverImage = selectedCoverImage;
         const res = await eventService.createEvent(payload);
         const createdEvent = res.data;
 
-        // Upload flyers after event creation
-        const newFlyers = flyers.filter((f) => f.dataUrl);
-        if (newFlyers.length > 0 && createdEvent?.id) {
-          const flyerResults = await Promise.allSettled(
-            newFlyers.map((f, i) =>
-              eventService.uploadEventFlyer(createdEvent.id, f.dataUrl!, i)
-            )
-          );
-          const failedCount = flyerResults.filter((r) => r.status === 'rejected').length;
-          if (failedCount > 0) {
-            toast.error(`${failedCount} flyer(s) failed to upload, but your event was created.`);
-          }
-        }
-
-        toast.success('Event published successfully! 🎉');
+        toast.success(status === 'PUBLISHED' ? 'Event published successfully!' : 'Event saved as a draft.');
         if (createdEvent?.slug || createdEvent?.id) {
           navigate(`/events/${createdEvent.slug || createdEvent.id}`);
         } else {
@@ -647,15 +691,16 @@ export default function CreateEventPage() {
                   {coverImage && (
                     <Box
                       component="img"
-                      src={coverImage}
+                      src={formatFlyerUrl(coverImage)}
                       alt="Cover preview"
                       sx={{
                         mt: 1.5,
                         width: '100%',
                         maxHeight: 200,
-                        objectFit: 'cover',
+                        objectFit: 'contain',
                         borderRadius: '8px',
                         border: `1px solid ${colors.border}`,
+                        bgcolor: colors.ink,
                       }}
                       onError={(e: any) => {
                         e.target.style.display = 'none';
@@ -674,6 +719,48 @@ export default function CreateEventPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe the experience, lineup, dress code, age limits, and entry guidelines..."
                 />
+
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2.5,
+                    pt: 1,
+                  }}
+                >
+                  <TextField
+                    label="Edition / Sub-heading"
+                    fullWidth
+                    value={edition}
+                    onChange={(e) => setEdition(e.target.value)}
+                    placeholder="e.g. VIBE-CONNECT 002"
+                    helperText="Event edition or franchise number"
+                  />
+                  <TextField
+                    label="Theme"
+                    fullWidth
+                    value={themeName}
+                    onChange={(e) => setThemeName(e.target.value)}
+                    placeholder="e.g. A Celebration of Gratitude"
+                    helperText="Official theme of this edition"
+                  />
+                  <TextField
+                    label="Dress Code"
+                    fullWidth
+                    value={dressCode}
+                    onChange={(e) => setDressCode(e.target.value)}
+                    placeholder="e.g. Church Wear, All White, Casual"
+                    helperText="Recommended attendee attire"
+                  />
+                  <TextField
+                    label="Bible Verse / Scripture / Quote"
+                    fullWidth
+                    value={bibleVerse}
+                    onChange={(e) => setBibleVerse(e.target.value)}
+                    placeholder="e.g. Psalm 107:1"
+                    helperText="Optional spiritual anchor or keynote verse"
+                  />
+                </Box>
               </Box>
             </Card>
 
@@ -1007,6 +1094,7 @@ export default function CreateEventPage() {
                 multiple
                 accept="image/jpeg,image/png,image/webp"
                 style={{ display: 'none' }}
+                disabled={submitting || flyerUploading}
                 onChange={handleFlyerFilePick}
               />
 
@@ -1034,9 +1122,9 @@ export default function CreateEventPage() {
                     >
                       <Box
                         component="img"
-                        src={flyer.preview}
+                        src={formatFlyerUrl(flyer.preview)}
                         alt={`Flyer ${idx + 1}`}
-                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        sx={{ width: '100%', height: '100%', objectFit: 'contain', bgcolor: colors.ink }}
                       />
                       {idx === 0 && (
                         <Chip
@@ -1109,7 +1197,7 @@ export default function CreateEventPage() {
               <Button
                 variant="outlined"
                 startIcon={<CloudUploadIcon />}
-                disabled={flyers.length >= 10}
+                disabled={flyers.length >= 10 || submitting || flyerUploading}
                 onClick={() => flyerInputRef.current?.click()}
                 sx={{
                   borderColor: colors.accent,
@@ -1280,7 +1368,7 @@ export default function CreateEventPage() {
                 type="submit"
                 variant="contained"
                 size="large"
-                disabled={submitting}
+                disabled={submitting || flyerUploading}
                 startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <RocketLaunchIcon />}
                 sx={{
                   bgcolor: colors.lime,

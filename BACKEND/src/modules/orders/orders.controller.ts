@@ -12,7 +12,10 @@ export class OrdersController {
   static async createOrder(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const order = await OrdersService.createOrder(req.user!.userId, req.body);
-      sendSuccess(res, order, 'Order created successfully. 15-minute reservation started.', 201);
+      const message = order && (order as any).totalKes === 0 && (order as any).status === 'PAID'
+        ? 'Registration confirmed! Your ticket has been issued.'
+        : 'Order created successfully. 15-minute reservation started.';
+      sendSuccess(res, order, message, 201);
     } catch (error) {
       next(error);
     }

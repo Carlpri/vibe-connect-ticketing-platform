@@ -10,6 +10,7 @@ import {
   eventIdParamSchema,
   uploadFlyerSchema,
   reorderFlyersSchema,
+  listAttendeesQuerySchema,
 } from './events.schemas';
 import { checkInTicketSchema } from '../tickets/tickets.schemas';
 
@@ -150,6 +151,16 @@ router.get(
   requireRole('ORGANIZER', 'ADMIN'),
   validateParams(eventIdParamSchema),
   EventsController.getCheckInStats
+);
+
+// Attendee & Registration List for Organizers & Administrators
+router.get(
+  '/:id/attendees',
+  authenticate,
+  requireRole('ORGANIZER', 'ADMIN'),
+  validateParams(eventIdParamSchema),
+  validateQuery(listAttendeesQuerySchema),
+  EventsController.getEventAttendees
 );
 
 export default router;

@@ -173,7 +173,7 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
               sx={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover',
+                objectFit: 'contain',
                 transition: 'transform 0.4s ease',
               }}
             />
@@ -328,7 +328,7 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
             sx={{
               width: '100%',
               height: '100%',
-              objectFit: 'cover',
+              objectFit: 'contain',
               display: 'block',
               transition: 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)',
             }}

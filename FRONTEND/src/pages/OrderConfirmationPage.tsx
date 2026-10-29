@@ -45,6 +45,7 @@ export default function OrderConfirmationPage() {
     };
   }, [orderId, hasOrderId]);
 
+  const isFree = order ? order.totalKes === 0 : Boolean(location.state?.isFreeRegistration);
   const paid = order?.status === 'PAID';
   const loadingOrder = hasOrderId && loading;
   const visibleError = hasOrderId ? error : 'No order was provided to verify.';
@@ -73,7 +74,7 @@ export default function OrderConfirmationPage() {
               mb: 2,
             }}
           >
-            Order status
+            {isFree ? 'Registration Confirmed!' : 'Order status'}
           </Typography>
 
           {loadingOrder ? (
@@ -82,16 +83,16 @@ export default function OrderConfirmationPage() {
             <Alert severity="warning" sx={{ textAlign: 'left' }}>{visibleError}</Alert>
           ) : order ? (
             <>
-              <Alert severity={paid ? 'success' : 'info'} sx={{ textAlign: 'left', mb: 2 }}>
+              <Alert severity={paid || isFree ? 'success' : 'info'} sx={{ textAlign: 'left', mb: 2 }}>
                 {paid
-                  ? 'Payment was verified by the backend. Check My Tickets for issued passes.'
+                  ? (isFree ? 'Registration confirmed! Your free ticket has been issued. Check My Tickets for your entry pass.' : 'Payment was verified by the backend. Check My Tickets for issued passes.')
                   : 'Payment has not been verified. This order is not a paid purchase, and no tickets are available yet.'}
               </Alert>
               <Typography variant="body2" sx={{ color: colors.mutedFg, mb: 1 }}>
                 Order: {order.id}
               </Typography>
-              <Typography variant="h6" sx={{ color: colors.fg, fontWeight: 800 }}>
-                {formatKes(order.totalKes)}
+              <Typography variant="h6" sx={{ color: isFree ? colors.success : colors.fg, fontWeight: 800 }}>
+                {isFree ? 'FREE • KES 0' : formatKes(order.totalKes)}
               </Typography>
             </>
           ) : null}

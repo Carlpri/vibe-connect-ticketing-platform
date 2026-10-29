@@ -172,7 +172,7 @@ export default function TicketSelector({
         </Typography>
       </Box>
 
-      {!hasVerifiedContact && totalCount > 0 && (
+      {!hasVerifiedContact && totalCount > 0 && totalKes > 0 && (
         <Alert severity="warning" sx={{ mb: 2, borderRadius: '8px' }}>
           <Typography variant="body2" sx={{ mb: 1 }}>
             Verify your email or phone number before purchasing tickets.
@@ -210,7 +210,7 @@ export default function TicketSelector({
           '&.Mui-disabled': { bgcolor: colors.mutedBg, color: colors.mutedFg },
         }}
       >
-        {totalCount === 0 ? 'Select Tickets' : totalKes === 0 ? 'Reserve Free Spot' : 'Get Tickets'}
+        {totalCount === 0 ? 'Select Tickets' : totalKes === 0 ? 'Get Free Ticket' : 'Get Tickets'}
       </Button>
     </Paper>
   );

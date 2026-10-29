@@ -27,6 +27,22 @@ function normaliseFlyerEntry(val: unknown): unknown {
   return val;
 }
 
+const flyerUrlSchema = z.string().trim().min(1).refine(
+  (value) => {
+    if (/^\/uploads\/flyers\/[a-f0-9-]+\.(jpg|png|webp)$/i.test(value)) {
+      return true;
+    }
+
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === 'http:' || protocol === 'https:';
+    } catch {
+      return false;
+    }
+  },
+  'Flyer must be an HTTP(S) URL or a stored flyer path'
+);
+
 export const eventFormatSchema = z.enum(['PHYSICAL', 'ONLINE', 'HYBRID']);
 export const eventStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED']);
 
@@ -62,7 +78,7 @@ export const createEventSchema = z.object({
     .optional(),
   description: z.string().trim().min(10, 'Description must be at least 10 characters'),
   category: z.string().trim().min(2, 'Category is required'),
-  coverImage: z.string().url('Cover image must be a valid URL').optional().or(z.literal('')),
+  coverImage: flyerUrlSchema.optional().or(z.literal('')),
   format: eventFormatSchema.default('PHYSICAL'),
   status: eventStatusSchema.default('PUBLISHED'),
   startsAt: z.string().datetime({ message: 'Valid startsAt ISO datetime is required' }),
@@ -86,11 +102,17 @@ export const createEventSchema = z.object({
             .map(normaliseFlyerEntry)
             .filter((v) => v !== undefined && v !== null && v !== '__SKIP__')
         : val,
-    z.array(z.string().url('Each flyer must be a valid URL')).max(10, 'Maximum 10 flyers per event')
+    z.array(flyerUrlSchema).max(10, 'Maximum 10 flyers per event')
   ).optional(),
 
   // Online location details
   onlineUrl: z.string().url('Online meeting link must be a valid URL').optional().or(z.literal('')),
+
+  // Thematic, Edition & Cultural Details
+  theme: z.string().trim().max(200).optional(),
+  bibleVerse: z.string().trim().max(200).optional(),
+  dressCode: z.string().trim().max(200).optional(),
+  edition: z.string().trim().max(100).optional(),
 
   // Ticket types (at least 1 ticket type required)
   ticketTypes: z.array(createTicketTypeSchema).min(1, 'Event must have at least one ticket type'),
@@ -117,7 +139,7 @@ export const updateEventSchema = z.object({
   title: z.string().trim().min(3).max(200).optional(),
   description: z.string().trim().min(10).optional(),
   category: z.string().trim().min(2).optional(),
-  coverImage: z.string().optional().or(z.literal('')),
+  coverImage: flyerUrlSchema.optional().or(z.literal('')),
   format: eventFormatSchema.optional(),
   status: eventStatusSchema.optional(),
   startsAt: z.string().datetime().optional(),
@@ -137,9 +159,13 @@ export const updateEventSchema = z.object({
             .map(normaliseFlyerEntry)
             .filter((v) => v !== undefined && v !== null && v !== '__SKIP__')
         : val,
-    z.array(z.string().url('Each flyer must be a valid URL')).max(10, 'Maximum 10 flyers per event')
+    z.array(flyerUrlSchema).max(10, 'Maximum 10 flyers per event')
   ).optional(),
   onlineUrl: z.string().url().optional().or(z.literal('')),
+  theme: z.string().trim().max(200).optional(),
+  bibleVerse: z.string().trim().max(200).optional(),
+  dressCode: z.string().trim().max(200).optional(),
+  edition: z.string().trim().max(100).optional(),
 });
 
 export const uploadFlyerSchema = z.object({
@@ -176,3 +202,12 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
 export type ManagedEventsQuery = z.infer<typeof managedEventsQuerySchema>;
+
+export const listAttendeesQuerySchema = z.object({
+  search: z.string().trim().optional(),
+  status: z.enum(['ALL', 'CHECKED_IN', 'NOT_CHECKED_IN', 'VOID']).default('ALL'),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(1000).default(50),
+});
+
+export type ListAttendeesQuery = z.infer<typeof listAttendeesQuerySchema>;

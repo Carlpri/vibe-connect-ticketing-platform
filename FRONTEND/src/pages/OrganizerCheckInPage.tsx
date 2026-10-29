@@ -32,11 +32,15 @@ import HistoryIcon from '@mui/icons-material/History';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import SearchIcon from '@mui/icons-material/Search';
 
 import { Html5Qrcode } from 'html5-qrcode';
 import toast from 'react-hot-toast';
 
 import { ticketService, type CheckInResponseData, type CheckInStatsData } from '../services/ticketService';
+import { eventService } from '../services/eventService';
+import type { AttendeeListItem } from '../types';
 import { colors } from '../styles/theme';
 import { formatKes } from '../utils/format';
 
@@ -101,8 +105,8 @@ function playAudioFeedback(type: 'success' | 'warning' | 'error') {
 export default function OrganizerCheckInPage() {
   const { eventId } = useParams<{ eventId: string }>();
 
-  // Scanner state
-  const [activeTab, setActiveTab] = useState<'camera' | 'manual'>('camera');
+  // Scanner & Navigation state
+  const [activeTab, setActiveTab] = useState<'camera' | 'manual' | 'attendees'>('camera');
   const [scannerActive, setScannerActive] = useState(false);
   const [cameraPermissionError, setCameraPermissionError] = useState<string | null>(null);
   const [availableCameras, setAvailableCameras] = useState<Array<{ id: string; label: string }>>([]);
@@ -120,6 +124,18 @@ export default function OrganizerCheckInPage() {
   const [stats, setStats] = useState<CheckInStatsData | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+
+  // Attendee Roster state
+  const [attendees, setAttendees] = useState<AttendeeListItem[]>([]);
+  const [attendeesLoading, setAttendeesLoading] = useState(false);
+  const [attendeeSearch, setAttendeeSearch] = useState('');
+  const [attendeeFilter, setAttendeeFilter] = useState<'ALL' | 'CHECKED_IN' | 'NOT_CHECKED_IN' | 'VOID'>('ALL');
+  const [attendeeCounts, setAttendeeCounts] = useState<{
+    totalIssued: number;
+    checkedIn: number;
+    notCheckedIn: number;
+    percentage: number;
+  }>({ totalIssued: 0, checkedIn: 0, notCheckedIn: 0, percentage: 0 });
 
   // References
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -148,6 +164,60 @@ export default function OrganizerCheckInPage() {
     const interval = setInterval(fetchStats, 15000); // Poll every 15s for live updates
     return () => clearInterval(interval);
   }, [fetchStats]);
+
+  // Load attendee roster
+  const fetchAttendees = useCallback(async () => {
+    if (!eventId) return;
+    setAttendeesLoading(true);
+    try {
+      const res = await eventService.getEventAttendees(eventId, {
+        search: attendeeSearch.trim() || undefined,
+        status: attendeeFilter,
+        limit: 100,
+      });
+      setAttendees(res.data.items);
+      setAttendeeCounts(res.data.counts);
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : 'Failed to load attendees.';
+      toast.error(msg || 'Failed to load attendee roster.');
+    } finally {
+      setAttendeesLoading(false);
+    }
+  }, [eventId, attendeeSearch, attendeeFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'attendees') {
+      fetchAttendees();
+    }
+  }, [activeTab, fetchAttendees]);
+
+  const handleExportCsv = () => {
+    if (attendees.length === 0) {
+      toast.error('No attendees to export.');
+      return;
+    }
+    const headers = ['Attendee Name', 'Email', 'Ticket Code', 'Ticket Type', 'Status', 'Checked In At', 'Issued At'];
+    const rows = attendees.map((a) => [
+      `"${(a.attendeeName || 'Attendee').replace(/"/g, '""')}"`,
+      `"${(a.attendeeEmail || '').replace(/"/g, '""')}"`,
+      `"${a.ticketNumber}"`,
+      `"${(a.ticketType?.name || 'General').replace(/"/g, '""')}"`,
+      a.status,
+      a.checkedInAt ? new Date(a.checkedInAt).toLocaleString() : 'N/A',
+      new Date(a.createdAt).toLocaleString(),
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `attendees-${stats?.event?.title || 'event'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Attendee list exported.');
+  };
 
   // Execute check-in API call with duplicate debounce & state locks
   const handleValidateIdentifier = useCallback(async (identifier: string) => {
@@ -508,6 +578,13 @@ export default function OrganizerCheckInPage() {
                     label="Manual Code Entry"
                     sx={{ textTransform: 'none', fontWeight: 700, py: 1.5 }}
                   />
+                  <Tab
+                    value="attendees"
+                    icon={<PeopleAltIcon />}
+                    iconPosition="start"
+                    label="Attendees & Registrations"
+                    sx={{ textTransform: 'none', fontWeight: 700, py: 1.5 }}
+                  />
                 </Tabs>
               </Box>
 
@@ -698,7 +775,7 @@ export default function OrganizerCheckInPage() {
                       )}
                     </Box>
                   </Box>
-                ) : (
+                ) : activeTab === 'manual' ? (
                   /* MANUAL ENTRY FORM */
                   <Box component="form" onSubmit={handleManualSubmit} sx={{ py: 2 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700, color: colors.fg, mb: 1 }}>

@@ -4,7 +4,7 @@
  * Uses the backend as the source of truth for public and managed event listings.
  */
 import apiClient from './api';
-import type { Event, EventsQuery, ApiSuccessResponse, CreateEventInput, UpdateEventInput } from '../types';
+import type { Event, EventsQuery, ApiSuccessResponse, CreateEventInput, UpdateEventInput, EventAttendeesResponse } from '../types';
 import { MOCK_EVENTS } from '../data/mockEvents';
 import { readStaleEvents, writeCachedEvents } from '../utils/eventsListCache';
 
@@ -127,37 +127,11 @@ export const eventService = {
    * GET /api/events/:id
    */
   async getEventById(id: string): Promise<ApiSuccessResponse<Event>> {
-    try {
-      const res = await apiClient.get<ApiSuccessResponse<Event>>(`/events/${id}`);
-      if (res.data?.data?.id) {
-        return res.data;
-      }
-    } catch {
-      // Backend endpoint for single event not ready
+    const res = await apiClient.get<ApiSuccessResponse<Event>>(`/events/${id}`);
+    if (!res.data?.data?.id) {
+      throw new Error('The event API returned an invalid response');
     }
-
-    const cachedList = readStaleEvents();
-    const fromCache = cachedList?.find((e) => e.id === id || e.slug === id);
-    if (fromCache) {
-      return {
-        success: true,
-        data: fromCache,
-        message: 'Event found',
-      };
-    }
-
-    if (useMockFallback) {
-      const found = MOCK_EVENTS.find((e) => e.id === id || e.slug === id);
-      if (found) {
-        return {
-          success: true,
-          data: found,
-          message: 'Event found',
-        };
-      }
-    }
-
-    throw new Error('Event not found');
+    return res.data;
   },
 
   /**
@@ -222,6 +196,19 @@ export const eventService = {
    */
   async deleteEventFlyer(eventId: string, flyerId: string): Promise<ApiSuccessResponse<void>> {
     const res = await apiClient.delete<ApiSuccessResponse<void>>(`/events/${eventId}/flyers/${flyerId}`);
+    return res.data;
+  },
+
+  /**
+   * GET /api/events/:id/attendees (Organizer / Admin only)
+   */
+  async getEventAttendees(
+    eventId: string,
+    params?: { search?: string; status?: string; page?: number; limit?: number }
+  ): Promise<ApiSuccessResponse<EventAttendeesResponse>> {
+    const res = await apiClient.get<ApiSuccessResponse<EventAttendeesResponse>>(`/events/${eventId}/attendees`, {
+      params,
+    });
     return res.data;
   },
 };

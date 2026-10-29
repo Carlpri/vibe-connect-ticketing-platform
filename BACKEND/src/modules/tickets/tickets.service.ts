@@ -105,9 +105,14 @@ export class TicketsService {
             title: true,
             slug: true,
             startsAt: true,
+            endsAt: true,
             venue: true,
             city: true,
             coverImage: true,
+            theme: true,
+            bibleVerse: true,
+            dressCode: true,
+            edition: true,
           },
         },
         order: {
@@ -126,25 +131,30 @@ export class TicketsService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const hasPaidTickets = tickets.some((t) => t.ticketType.priceKes > 0);
+
     return {
-      verificationRequired: !canRevealQr,
+      verificationRequired: !canRevealQr && hasPaidTickets,
       emailVerified: user.emailVerified,
       phoneVerified: user.phoneVerified,
-      tickets: tickets.map((t) => ({
-        id: t.id,
-        orderId: t.orderId,
-        serialNumber: t.serialNumber,
-        status: t.status,
-        checkedInAt: t.checkedInAt,
-        ticketType: t.ticketType,
-        event: t.event,
-        paidAt: t.order.paidAt,
-        paymentRef: t.order.payments[0]?.reference ?? t.order.payments[0]?.mpesaReceiptNumber ?? null,
-        attendeePhone: t.order.payments[0]?.phoneNumber ?? user.phone,
-        holderName: user.name,
-        holderEmail: user.email,
-        qrPayload: canRevealQr && t.status !== TicketStatus.VOID ? buildTicketQrPayload(t.id) : null,
-      })),
+      tickets: tickets.map((t) => {
+        const canUnlock = canRevealQr || t.ticketType.priceKes === 0;
+        return {
+          id: t.id,
+          orderId: t.orderId,
+          serialNumber: t.serialNumber,
+          status: t.status,
+          checkedInAt: t.checkedInAt,
+          ticketType: t.ticketType,
+          event: t.event,
+          paidAt: t.order.paidAt,
+          paymentRef: t.order.payments[0]?.reference ?? t.order.payments[0]?.mpesaReceiptNumber ?? null,
+          attendeePhone: t.order.payments[0]?.phoneNumber ?? user.phone,
+          holderName: user.name,
+          holderEmail: user.email,
+          qrPayload: canUnlock && t.status !== TicketStatus.VOID ? buildTicketQrPayload(t.id) : null,
+        };
+      }),
     };
   }
 
@@ -186,9 +196,14 @@ export class TicketsService {
             title: true,
             slug: true,
             startsAt: true,
+            endsAt: true,
             venue: true,
             city: true,
             coverImage: true,
+            theme: true,
+            bibleVerse: true,
+            dressCode: true,
+            edition: true,
           },
         },
         order: {
@@ -207,25 +222,30 @@ export class TicketsService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const hasPaidTickets = tickets.some((t) => t.ticketType.priceKes > 0);
+
     return {
-      verificationRequired: !canRevealQr,
+      verificationRequired: !canRevealQr && hasPaidTickets,
       emailVerified: user.emailVerified,
       phoneVerified: user.phoneVerified,
-      tickets: tickets.map((t) => ({
-        id: t.id,
-        orderId: t.orderId,
-        serialNumber: t.serialNumber,
-        status: t.status,
-        checkedInAt: t.checkedInAt,
-        ticketType: t.ticketType,
-        event: t.event,
-        paidAt: t.order.paidAt,
-        paymentRef: t.order.payments[0]?.reference ?? t.order.payments[0]?.mpesaReceiptNumber ?? null,
-        attendeePhone: t.order.payments[0]?.phoneNumber ?? user.phone,
-        holderName: user.name,
-        holderEmail: user.email,
-        qrPayload: canRevealQr && t.status !== TicketStatus.VOID ? buildTicketQrPayload(t.id) : null,
-      })),
+      tickets: tickets.map((t) => {
+        const canUnlock = canRevealQr || t.ticketType.priceKes === 0;
+        return {
+          id: t.id,
+          orderId: t.orderId,
+          serialNumber: t.serialNumber,
+          status: t.status,
+          checkedInAt: t.checkedInAt,
+          ticketType: t.ticketType,
+          event: t.event,
+          paidAt: t.order.paidAt,
+          paymentRef: t.order.payments[0]?.reference ?? t.order.payments[0]?.mpesaReceiptNumber ?? null,
+          attendeePhone: t.order.payments[0]?.phoneNumber ?? user.phone,
+          holderName: user.name,
+          holderEmail: user.email,
+          qrPayload: canUnlock && t.status !== TicketStatus.VOID ? buildTicketQrPayload(t.id) : null,
+        };
+      }),
     };
   }
 
@@ -474,6 +494,7 @@ export class TicketsService {
       });
       return {
         outcome: CheckInOutcome.INVALID,
+        isWrongEvent: true,
         valid: false,
         alreadyCheckedIn: false,
         message: `This ticket was issued for a different event: "${ticket.event.title}".`,

@@ -135,6 +135,12 @@ model Event {
   // Online Details (for ONLINE or HYBRID events)
   onlineUrl   String?
 
+  // Thematic & Edition Details
+  theme       String?
+  bibleVerse  String?
+  dressCode   String?
+  edition     String?
+
   createdAt   DateTime    @default(now()) @db.Timestamptz
   updatedAt   DateTime    @updatedAt @db.Timestamptz
 

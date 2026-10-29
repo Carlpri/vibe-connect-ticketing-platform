@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, TicketStatus } from '@prisma/client';
 import { prisma } from '../../shared/utils/prisma';
 import { AppError } from '../../shared/errors/AppError';
 import { CreateOrderInput, InitiatePaymentInput } from './orders.schemas';
@@ -14,7 +14,7 @@ export class OrdersService {
   static async createOrder(userId: string, input: CreateOrderInput) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        return await prisma.$transaction(async (tx) => {
+        const createdOrder = await prisma.$transaction(async (tx) => {
           const now = new Date();
           const event = await tx.event.findUnique({
             where: { id: input.eventId },
@@ -174,12 +174,46 @@ export class OrdersService {
           if (totalKes > 2_147_483_647) {
             throw new AppError('Order total exceeds the supported amount', 400);
           }
-          const expiresAt = new Date(now.getTime() + 15 * 60 * 1000);
+
+          const isFreeOrder = totalKes === 0;
+
+          if (isFreeOrder) {
+            // Prevent duplicate free registrations for the same attendee and event
+            const existingPaidOrder = await tx.order.findFirst({
+              where: {
+                userId,
+                eventId: input.eventId,
+                status: 'PAID',
+              },
+            });
+            if (existingPaidOrder) {
+              throw new AppError('You have already registered for this event. Check My Tickets for your pass.', 409);
+            }
+
+            const existingActiveTicket = await tx.ticket.findFirst({
+              where: {
+                userId,
+                eventId: input.eventId,
+                status: { in: [TicketStatus.ISSUED, TicketStatus.CHECKED_IN] },
+              },
+            });
+            if (existingActiveTicket) {
+              throw new AppError('You have already registered for this event. Check My Tickets for your pass.', 409);
+            }
+          }
+
+          const status = isFreeOrder ? 'PAID' : 'PENDING';
+          const paidAt = isFreeOrder ? now : null;
+          const expiresAt = isFreeOrder
+            ? new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
+            : new Date(now.getTime() + 15 * 60 * 1000);
 
           return tx.order.create({
             data: {
               userId,
               eventId: input.eventId,
+              status,
+              paidAt,
               subtotalKes,
               discountKes,
               serviceFeeKes,
@@ -194,7 +228,23 @@ export class OrdersService {
             },
             include: { items: true, promoCode: true },
           });
-        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        }, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          timeout: 15000,
+          maxWait: 10000,
+        });
+
+        // For zero-price free registrations, immediately issue digital tickets atomically
+        if (createdOrder.status === 'PAID') {
+          const tickets = await TicketsService.issueTicketsForPaidOrder(createdOrder.id);
+          logger.info(`[Free Ticketing] Successfully registered attendee ${userId} for event ${input.eventId}. Tickets issued.`);
+          return {
+            ...createdOrder,
+            tickets,
+          };
+        }
+
+        return createdOrder;
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
           if (attempt < 2) {

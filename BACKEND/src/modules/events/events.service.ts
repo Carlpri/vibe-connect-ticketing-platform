@@ -1,6 +1,6 @@
 import { prisma } from '../../shared/utils/prisma';
 import { AppError } from '../../shared/errors/AppError';
-import { CreateEventInput, UpdateEventInput, ListEventsQuery } from './events.schemas';
+import { CreateEventInput, UpdateEventInput, ListEventsQuery, ListAttendeesQuery } from './events.schemas';
 import { TokenPayload, UserRole } from '../../shared/types';
 import { Prisma } from '@prisma/client';
 import { parseAndValidateBase64Image, saveImageToUploads } from '../../shared/utils/imageUpload';
@@ -137,6 +137,10 @@ export class EventsService {
         placeId: input.placeId || null,
         directions: input.directions || null,
         onlineUrl: input.onlineUrl || null,
+        theme: input.theme || null,
+        bibleVerse: input.bibleVerse || null,
+        dressCode: input.dressCode || null,
+        edition: input.edition || null,
         flyers: input.flyers && input.flyers.length > 0 ? {
           create: input.flyers.slice(0, 10).map((url, idx) => ({
             url,
@@ -373,14 +377,20 @@ export class EventsService {
       throw new AppError('Event end time must be after start time', 400);
     }
 
-    // Handle flyers if supplied in update
-    if (input.flyers) {
-      if (input.flyers.length > 10) {
-        throw new AppError('An event can have a maximum of 10 promotional flyers', 400);
-      }
-      await prisma.$transaction(async (tx) => {
+    if (input.flyers && input.flyers.length > 10) {
+      throw new AppError('An event can have a maximum of 10 promotional flyers', 400);
+    }
+
+    const updatedCover =
+      input.coverImage === ''
+        ? null
+        : input.coverImage ??
+          (input.flyers !== undefined ? input.flyers[0] ?? null : existing.coverImage);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (input.flyers !== undefined) {
         await tx.eventFlyer.deleteMany({ where: { eventId: id } });
-        if (input.flyers && input.flyers.length > 0) {
+        if (input.flyers.length > 0) {
           await tx.eventFlyer.createMany({
             data: input.flyers.map((url, idx) => ({
               eventId: id,
@@ -389,42 +399,41 @@ export class EventsService {
             })),
           });
         }
-      });
-    }
+      }
 
-    const updatedCover =
-      input.coverImage === ''
-        ? null
-        : input.coverImage || (input.flyers && input.flyers[0]) || existing.coverImage;
-
-    const updated = await prisma.event.update({
-      where: { id },
-      data: {
-        title: input.title,
-        description: input.description,
-        category: input.category,
-        coverImage: updatedCover,
-        format: input.format,
-        status: input.status,
-        startsAt,
-        endsAt,
-        venue: input.venue,
-        city: input.city,
-        county: input.county,
-        address: input.address,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        placeId: input.placeId,
-        directions: input.directions,
-        onlineUrl: input.onlineUrl === '' ? null : input.onlineUrl,
-      },
-      include: {
-        ticketTypes: true,
-        flyers: { orderBy: { order: 'asc' } },
-        organizer: {
-          select: { id: true, name: true, email: true },
+      return tx.event.update({
+        where: { id },
+        data: {
+          title: input.title,
+          description: input.description,
+          category: input.category,
+          coverImage: updatedCover,
+          format: input.format,
+          status: input.status,
+          startsAt,
+          endsAt,
+          venue: input.venue,
+          city: input.city,
+          county: input.county,
+          address: input.address,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          placeId: input.placeId,
+          directions: input.directions,
+          onlineUrl: input.onlineUrl === '' ? null : input.onlineUrl,
+          theme: input.theme,
+          bibleVerse: input.bibleVerse,
+          dressCode: input.dressCode,
+          edition: input.edition,
         },
-      },
+        include: {
+          ticketTypes: true,
+          flyers: { orderBy: { order: 'asc' } },
+          organizer: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
     });
 
     return formatEventForClient(updated);
@@ -627,5 +636,128 @@ export class EventsService {
     }
 
     return { message: 'Flyer deleted successfully', remainingCount: remainingFlyers.length };
+  }
+
+  /**
+   * Retrieve registrations & attendees for an event.
+   * Only accessible by authorized event organizer or ADMIN.
+   */
+  static async getEventAttendees(
+    eventId: string,
+    user: TokenPayload,
+    query: ListAttendeesQuery
+  ) {
+    const isUuid = UUID_REGEX.test(eventId);
+    const event = await prisma.event.findUnique({
+      where: isUuid ? { id: eventId } : { slug: eventId },
+      select: { id: true, title: true, organizerId: true, startsAt: true, venue: true },
+    });
+
+    if (!event) {
+      throw new AppError('Event not found', 404);
+    }
+
+    if (user.role !== 'ADMIN' && event.organizerId !== user.userId) {
+      throw new AppError('Forbidden: You do not have permission to view attendees for this event', 403);
+    }
+
+    const { search, status, page = 1, limit = 50 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.TicketWhereInput = {
+      eventId: event.id,
+      order: { status: 'PAID' },
+    };
+
+    if (status === 'CHECKED_IN') {
+      where.status = 'CHECKED_IN';
+    } else if (status === 'NOT_CHECKED_IN') {
+      where.status = 'ISSUED';
+    } else if (status === 'VOID') {
+      where.status = 'VOID';
+    }
+
+    if (search && search.trim()) {
+      const s = search.trim();
+      where.OR = [
+        { user: { name: { contains: s, mode: 'insensitive' } } },
+        { user: { email: { contains: s, mode: 'insensitive' } } },
+        { user: { phone: { contains: s, mode: 'insensitive' } } },
+        ...(UUID_REGEX.test(s) ? [{ id: { equals: s } }] : []),
+      ];
+    }
+
+    const [total, tickets, stats] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        include: {
+          ticketType: { select: { id: true, name: true, priceKes: true } },
+          user: { select: { id: true, name: true, email: true, phone: true } },
+          order: { select: { id: true, status: true, paidAt: true, totalKes: true } },
+        },
+      }),
+      prisma.ticket.groupBy({
+        by: ['status'],
+        where: { eventId: event.id, order: { status: 'PAID' } },
+        _count: { id: true },
+      }),
+    ]);
+
+    let totalIssued = 0;
+    let checkedIn = 0;
+    let notCheckedIn = 0;
+    let voidCount = 0;
+
+    for (const group of stats) {
+      if (group.status === 'CHECKED_IN') {
+        checkedIn += group._count.id;
+        totalIssued += group._count.id;
+      } else if (group.status === 'ISSUED') {
+        notCheckedIn += group._count.id;
+        totalIssued += group._count.id;
+      } else if (group.status === 'VOID') {
+        voidCount += group._count.id;
+      }
+    }
+
+    return {
+      event: {
+        id: event.id,
+        title: event.title,
+        venue: event.venue,
+        startsAt: event.startsAt,
+      },
+      counts: {
+        totalIssued,
+        checkedIn,
+        notCheckedIn,
+        void: voidCount,
+        percentage: totalIssued > 0 ? Math.round((checkedIn / totalIssued) * 100) : 0,
+      },
+      attendees: tickets.map((t) => ({
+        ticketId: t.id,
+        serialNumber: t.serialNumber,
+        ticketCode: `VC-${t.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`,
+        ticketType: t.ticketType.name,
+        priceKes: t.ticketType.priceKes,
+        attendeeName: t.user.name,
+        attendeeEmail: t.user.email,
+        attendeePhone: t.user.phone,
+        status: t.status,
+        checkedInAt: t.checkedInAt,
+        registeredAt: t.createdAt,
+        orderId: t.orderId,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
   }
 }

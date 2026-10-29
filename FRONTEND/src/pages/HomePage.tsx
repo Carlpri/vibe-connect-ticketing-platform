@@ -7,14 +7,23 @@ import {
   InputBase,
   Paper,
   Alert,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import PageMeta from '../components/common/PageMeta';
 import HomeEventRail from '../components/home/HomeEventRail';
 import HomeSectionHeader from '../components/home/HomeSectionHeader';
 import { useEventsList } from '../hooks/useEventsList';
 import { colors } from '../styles/theme';
+import { formatFlyerUrl } from '../utils/eventMedia';
+import { formatKes } from '../utils/format';
 
 const CATEGORIES = [
   'Music',
@@ -31,6 +40,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { events, loading, error } = useEventsList();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFlyer, setSelectedFlyer] = useState<{ event: any; url: string } | null>(null);
   const showEventSkeleton = loading && events.length === 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -322,6 +332,170 @@ export default function HomePage() {
         </Container>
       </Box>
 
+      {/* ── Visual Showcase: Official Event Flyers & Posters ── */}
+      {events.length > 0 && (
+        <Box
+          className="home-section-reveal"
+          sx={{
+            bgcolor: '#141210',
+            color: colors.inkFg,
+            py: { xs: 6, md: 9 },
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            width: '100%',
+          }}
+        >
+          <Container maxWidth="lg">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 900,
+                    letterSpacing: '0.12em',
+                    color: colors.lime,
+                    textTransform: 'uppercase',
+                    display: 'block',
+                    mb: 0.8,
+                  }}
+                >
+                  OFFICIAL ARTWORK & FLYERS
+                </Typography>
+                <Typography
+                  component="h2"
+                  sx={{
+                    fontFamily: '"Archivo Black", sans-serif',
+                    fontSize: { xs: '1.8rem', md: '2.4rem' },
+                    color: '#FFFFFF',
+                    textTransform: 'uppercase',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  EVENT POSTERS SHOWCASE
+                </Typography>
+              </Box>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: { xs: 'none', sm: 'block' } }}>
+                Click any poster to inspect details & reserve passes
+              </Typography>
+            </Box>
+
+            <Box
+              className="hide-scrollbar"
+              sx={{
+                display: 'flex',
+                gap: 2.5,
+                overflowX: 'auto',
+                pb: 2,
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {events.map((evt) => {
+                const flyerUrl = formatFlyerUrl(evt.flyers?.[0] || evt.coverImage);
+                const minPrice = evt.ticketTypes?.length
+                  ? Math.min(...evt.ticketTypes.map((t) => t.priceKes))
+                  : 0;
+
+                return (
+                  <Box
+                    key={evt.id}
+                    onClick={() => setSelectedFlyer({ event: evt, url: flyerUrl })}
+                    sx={{
+                      flex: { xs: '0 0 230px', sm: '0 0 260px', md: '0 0 280px' },
+                      cursor: 'pointer',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      bgcolor: '#1C1916',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
+                      scrollSnapAlign: 'start',
+                      '&:hover': {
+                        transform: 'translateY(-6px)',
+                        borderColor: colors.lime,
+                        boxShadow: '0 12px 30px rgba(0,0,0,0.6)',
+                        '& .flyer-badge': { bgcolor: colors.lime, color: colors.limeFg },
+                      },
+                    }}
+                  >
+                    <Box sx={{ position: 'relative', width: '100%', aspectRatio: '3/4', overflow: 'hidden' }}>
+                      <Box
+                        component="img"
+                        src={flyerUrl}
+                        alt={evt.title}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 10,
+                          right: 10,
+                          bgcolor: minPrice === 0 ? colors.success : colors.ink,
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          color: '#fff',
+                          px: 1,
+                          py: 0.4,
+                          borderRadius: '4px',
+                          fontWeight: 900,
+                          fontSize: '0.7rem',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {minPrice === 0 ? 'FREE' : formatKes(minPrice)}
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ p: 2 }}>
+                      {evt.edition && (
+                        <Typography sx={{ color: colors.coral, fontWeight: 900, fontSize: '0.72rem', textTransform: 'uppercase', mb: 0.3 }}>
+                          {evt.edition}
+                        </Typography>
+                      )}
+                      <Typography
+                        sx={{
+                          fontFamily: '"Archivo Black", sans-serif',
+                          fontSize: '1rem',
+                          color: '#fff',
+                          textTransform: 'uppercase',
+                          lineHeight: 1.2,
+                          mb: 0.5,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {evt.title}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block', mb: 1.5 }}>
+                        📍 {evt.venue || 'Nairobi'}
+                      </Typography>
+
+                      <Button
+                        size="small"
+                        fullWidth
+                        variant="outlined"
+                        startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+                        className="flyer-badge"
+                        sx={{
+                          borderColor: 'rgba(255,255,255,0.25)',
+                          color: '#fff',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          fontSize: '0.75rem',
+                          borderRadius: '6px',
+                          py: 0.6,
+                        }}
+                      >
+                        View Flyer
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Container>
+        </Box>
+      )}
+
       {/* ── Collection 3: Events Near You (Light Theme #F7F4EE) ── */}
       <Box className="home-section-reveal" sx={{ py: { xs: 5, md: 9 }, overflow: 'hidden', width: '100%', animationDelay: '0.18s' }}>
         <Container maxWidth="lg" sx={{ minWidth: 0 }}>
@@ -455,6 +629,83 @@ export default function HomePage() {
           </Box>
         </Box>
       </Container>
+
+      {/* Flyer Preview Dialog */}
+      <Dialog
+        open={Boolean(selectedFlyer)}
+        onClose={() => setSelectedFlyer(null)}
+        maxWidth="md"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: '#0E1013',
+              color: '#fff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.15)',
+            },
+          },
+        }}
+      >
+        {selectedFlyer && (
+          <>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 3, py: 2 }}>
+              <Box>
+                {selectedFlyer.event.edition && (
+                  <Typography sx={{ color: colors.coral, fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                    {selectedFlyer.event.edition}
+                  </Typography>
+                )}
+                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: colors.lime }}>
+                  {selectedFlyer.event.title}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.65)' }}>
+                  📍 {selectedFlyer.event.venue || 'Venue'}
+                </Typography>
+              </Box>
+              <IconButton onClick={() => setSelectedFlyer(null)} sx={{ color: '#fff' }}>
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: '#000' }}>
+              <Box
+                component="img"
+                src={selectedFlyer.url}
+                alt={selectedFlyer.event.title}
+                sx={{
+                  maxWidth: '100%',
+                  maxHeight: '68vh',
+                  objectFit: 'contain',
+                  borderRadius: '6px',
+                  mb: 2,
+                }}
+              />
+              <Button
+                component={Link}
+                to={`/events/${selectedFlyer.event.id}`}
+                variant="contained"
+                startIcon={<ConfirmationNumberIcon />}
+                sx={{
+                  bgcolor: colors.lime,
+                  color: colors.limeFg,
+                  fontWeight: 900,
+                  fontSize: '0.9rem',
+                  textTransform: 'uppercase',
+                  px: 4,
+                  py: 1.2,
+                  borderRadius: '8px',
+                  '&:hover': { bgcolor: colors.limeLt },
+                }}
+              >
+                {selectedFlyer.event.ticketTypes?.some((t: any) => t.priceKes === 0)
+                  ? 'Get Free Ticket'
+                  : 'Get Tickets'}
+              </Button>
+            </DialogContent>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 }

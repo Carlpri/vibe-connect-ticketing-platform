@@ -126,6 +126,23 @@ export const requireAtLeastOneVerified = async (
   }
 
   if (!user.emailVerified && !user.phoneVerified) {
+    // Allow free event registrations through without requiring contact verification up front
+    if (Array.isArray(req.body?.items) && req.body.items.length > 0) {
+      const ticketTypeIds = req.body.items
+        .map((i: any) => i.ticketTypeId)
+        .filter((id: unknown): id is string => typeof id === 'string');
+      if (ticketTypeIds.length > 0) {
+        const ticketTypes = await prisma.ticketType.findMany({
+          where: { id: { in: ticketTypeIds } },
+          select: { priceKes: true },
+        });
+        const allFree = ticketTypes.length > 0 && ticketTypes.every((t) => t.priceKes === 0);
+        if (allFree) {
+          return next();
+        }
+      }
+    }
+
     sendError(res, 'Email or phone verification required before purchasing tickets', 403);
     return;
   }
