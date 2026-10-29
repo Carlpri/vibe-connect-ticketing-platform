@@ -2,12 +2,19 @@ services:
   - type: web
     name: vibe-connect-api
     runtime: node
+    plan: starter
     rootDir: BACKEND
     buildCommand: npm install && npx prisma migrate deploy && npm run build
     startCommand: node dist/server.js
+    disk:
+      name: vibe-connect-uploads
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
       - key: JWT_SECRET
         sync: false
       - key: PAYSTACK_SECRET_KEY

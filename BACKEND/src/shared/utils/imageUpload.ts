@@ -11,6 +11,13 @@ export interface ValidatedImage {
   extension: 'jpg' | 'png' | 'webp';
 }
 
+export function getUploadsDirectory(): string {
+  const configuredDirectory = process.env.UPLOADS_DIR?.trim();
+  return configuredDirectory
+    ? path.resolve(configuredDirectory)
+    : path.join(process.cwd(), 'uploads');
+}
+
 /**
  * Validates actual binary content using magic bytes.
  */
@@ -75,7 +82,7 @@ export function parseAndValidateBase64Image(dataUrl: string): ValidatedImage {
  * Saves a validated image buffer to the local uploads directory.
  */
 export async function saveImageToUploads(image: ValidatedImage, subDir: string = 'flyers'): Promise<string> {
-  const uploadsDir = path.join(process.cwd(), 'uploads', subDir);
+  const uploadsDir = path.join(getUploadsDirectory(), subDir);
   await fs.promises.mkdir(uploadsDir, { recursive: true });
 
   const filename = `${crypto.randomUUID()}.${image.extension}`;

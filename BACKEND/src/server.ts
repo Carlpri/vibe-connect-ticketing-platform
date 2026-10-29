@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { sendSuccess, sendError } from './shared/utils/apiResponse';
+import { getUploadsDirectory } from './shared/utils/imageUpload';
 
 // Module Routes
 import authRoutes from './modules/auth/auth.routes';
@@ -14,8 +15,6 @@ import paymentsRoutes from './modules/payments/payments.routes';
 import promoCodesRoutes from './modules/promo-codes/promo-codes.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import adminRoutes from './modules/admin/admin.routes';
-
-import path from 'path';
 
 const app = express();
 
@@ -40,7 +39,7 @@ app.use(
 );
 
 // Serve uploaded event media statically
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(getUploadsDirectory()));
 
 // API Root & Health Check
 app.get('/', (_req, res) => {
