@@ -3,10 +3,10 @@ import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { colors } from '../../styles/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { BrandMark } from '../common/BrandLogo';
 
 export default function MobileBottomNav() {
   const location = useLocation();
@@ -116,15 +116,22 @@ export default function MobileBottomNav() {
           </Typography>
         </Box>
 
-        {/* Center Lime Explore Button with Sparkle */}
+        {/* Center event creation action */}
         <Box
-          onClick={() => navigate('/events?trending=true')}
+          component="button"
+          type="button"
+          aria-label="Create an event"
+          onClick={() => navigate('/create-event')}
           sx={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             cursor: 'pointer',
             mt: -2.5,
+            p: 0,
+            border: 0,
+            bgcolor: 'transparent',
+            font: 'inherit',
           }}
         >
           <Box
@@ -132,17 +139,15 @@ export default function MobileBottomNav() {
               width: 52,
               height: 52,
               borderRadius: '50%',
-              bgcolor: colors.lime,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 16px rgba(181, 224, 42, 0.6)',
               border: `3px solid #FEFDFB`,
               transition: 'transform 0.2s ease',
               '&:active': { transform: 'scale(0.95)' },
             }}
           >
-            <AutoAwesomeIcon sx={{ fontSize: 24, color: colors.limeFg }} />
+            <BrandMark size={46} />
           </Box>
           <Typography
             variant="caption"
@@ -154,7 +159,7 @@ export default function MobileBottomNav() {
               mt: 0.3,
             }}
           >
-            Explore
+            Create
           </Typography>
         </Box>
 

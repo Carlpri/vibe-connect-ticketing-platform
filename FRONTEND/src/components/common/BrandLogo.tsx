@@ -1,5 +1,4 @@
 import { Box, Typography } from '@mui/material';
-import FlashOnIcon from '@mui/icons-material/FlashOn';
 import { Link } from 'react-router-dom';
 import { colors } from '../../styles/theme';
 
@@ -9,29 +8,45 @@ interface BrandLogoProps {
   lightText?: boolean; // when rendered on dark/ink backgrounds
 }
 
+export function BrandMark({ size = 32 }: { size?: number }) {
+  return (
+    <Box
+      sx={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        bgcolor: '#FEFDFB',
+        border: `1px solid ${colors.border}`,
+        boxShadow: '0 2px 8px rgba(28, 25, 22, 0.12)',
+        flexShrink: 0,
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
+      <Box
+        component="img"
+        src="/vibe-connect-logo.png"
+        alt=""
+        sx={{
+          position: 'absolute',
+          width: '200%',
+          height: '200%',
+          maxWidth: 'none',
+          left: '-46%',
+          top: '-25%',
+        }}
+      />
+    </Box>
+  );
+}
+
 export default function BrandLogo({ to = '/', size = 'medium', lightText = false }: BrandLogoProps) {
   const iconSize = size === 'small' ? 24 : size === 'large' ? 38 : 32;
-  const boltSize = size === 'small' ? 16 : size === 'large' ? 24 : 20;
   const fontSize = size === 'small' ? '1.1rem' : size === 'large' ? '1.6rem' : '1.35rem';
 
   const content = (
     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.2, textDecoration: 'none' }}>
-      {/* Lime circle with dark lightning bolt */}
-      <Box
-        sx={{
-          width: iconSize,
-          height: iconSize,
-          borderRadius: '50%',
-          bgcolor: colors.lime,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(181, 224, 42, 0.4)',
-        }}
-      >
-        <FlashOnIcon sx={{ fontSize: boltSize, color: colors.limeFg }} />
-      </Box>
+      <BrandMark size={iconSize} />
 
       {/* Brand text */}
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
