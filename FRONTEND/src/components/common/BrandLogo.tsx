@@ -14,10 +14,6 @@ export function BrandMark({ size = 32 }: { size?: number }) {
       sx={{
         width: size,
         height: size,
-        borderRadius: '50%',
-        bgcolor: '#FEFDFB',
-        border: `1px solid ${colors.border}`,
-        boxShadow: '0 2px 8px rgba(28, 25, 22, 0.12)',
         flexShrink: 0,
         overflow: 'hidden',
         position: 'relative',

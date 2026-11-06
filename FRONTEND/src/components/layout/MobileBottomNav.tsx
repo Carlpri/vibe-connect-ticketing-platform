@@ -138,16 +138,14 @@ export default function MobileBottomNav() {
             sx={{
               width: 52,
               height: 52,
-              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: `3px solid #FEFDFB`,
               transition: 'transform 0.2s ease',
               '&:active': { transform: 'scale(0.95)' },
             }}
           >
-            <BrandMark size={46} />
+            <BrandMark size={52} />
           </Box>
           <Typography
             variant="caption"
