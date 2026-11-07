@@ -2,6 +2,7 @@ import { Box, Typography, Button } from '@mui/material';
 import { Link } from 'react-router-dom';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { colors } from '../../styles/theme';
+import { useThemeMode } from '../../contexts/ThemeModeContext';
 
 type HomeSectionHeaderProps = {
   eyebrow: string;
@@ -26,6 +27,10 @@ export default function HomeSectionHeader({
   linkHoverColor = colors.coral,
   animationDelay = '0s',
 }: HomeSectionHeaderProps) {
+  const { mode } = useThemeMode();
+  const resolvedLinkColor = mode === 'dark' ? '#D4FF2A' : linkColor;
+  const resolvedLinkHoverColor = mode === 'dark' ? '#E7FF75' : linkHoverColor;
+
   return (
     <Box
       sx={{
@@ -87,12 +92,12 @@ export default function HomeSectionHeader({
           flexShrink: 0,
           fontWeight: 700,
           textTransform: 'uppercase',
-          color: linkColor,
+          color: resolvedLinkColor,
           fontSize: { xs: '0.75rem', sm: '0.85rem' },
           letterSpacing: '0.04em',
           px: { xs: 1, sm: 2 },
           minWidth: 'auto',
-          '&:hover': { color: linkHoverColor, bgcolor: 'transparent' },
+          '&:hover': { color: resolvedLinkHoverColor, bgcolor: 'transparent' },
         }}
       >
         {linkLabel}

@@ -522,7 +522,7 @@ export default function HomePage() {
       {/* ── Section 4: Lime Promotional Block: “YOUR CITY IS SHOWING UP.” ── */}
       <Container maxWidth="lg" sx={{ pb: { xs: 8, md: 10 } }}>
         <Box
-          className="animate-fade-in-up"
+          className="organizer-promo animate-fade-in-up"
           sx={{
             bgcolor: colors.lime,
             borderRadius: '8px',

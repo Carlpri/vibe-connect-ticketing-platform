@@ -115,8 +115,15 @@ function AppTheme() {
               backgroundImage: 'none',
             },
           '.app-theme-dark .MuiTypography-root': { color: '#FAFAFA' },
+          '.app-theme-dark .organizer-promo .MuiTypography-root': { color: '#09090B' },
+          '.app-theme-dark .organizer-promo .MuiButton-outlined': {
+            color: '#09090B',
+            borderColor: '#09090B',
+          },
           '.app-theme-dark .MuiTypography-body2, .app-theme-dark .MuiTypography-caption, .app-theme-dark .MuiTypography-subtitle2':
             { color: '#A1A1AA' },
+          '.app-theme-dark .organizer-promo .MuiTypography-root.MuiTypography-body2, .app-theme-dark .organizer-promo .MuiTypography-root.MuiTypography-caption':
+            { color: '#09090B' },
           '.app-theme-dark .MuiInputBase-root': {
             bgcolor: '#09090B',
             color: '#FAFAFA',
