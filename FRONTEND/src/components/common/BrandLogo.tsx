@@ -19,15 +19,13 @@ export function BrandMark({ size = 32 }: { size?: number }) {
     >
       <Box
         component="img"
-        src="/vibe-connect-logo.png"
+        src="/connect-fav.png"
         alt=""
         sx={{
-          position: 'absolute',
-          width: '320%',
-          height: '320%',
-          maxWidth: 'none',
-          left: '-65.8%',
-          top: '-8.3%',
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
         }}
       />
     </Box>
