@@ -5,8 +5,12 @@ import XIcon from '@mui/icons-material/X';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import { colors } from '../../styles/theme';
 import BrandLogo from '../common/BrandLogo';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Footer() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
   return (
     <Box
       component="footer"
@@ -183,29 +187,31 @@ export default function Footer() {
             >
               Engineered in Nairobi for East Africa’s entertainment ecosystem, with event discovery and secure ticket check-in.
             </Typography>
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: '8px',
-                bgcolor: 'rgba(232, 80, 58, 0.08)',
-                border: '1px solid rgba(232, 80, 58, 0.25)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 1.5,
-              }}
-            >
+            {isAdmin && (
               <Box
                 sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  bgcolor: colors.coral,
+                  p: 1.5,
+                  borderRadius: '8px',
+                  bgcolor: 'rgba(232, 80, 58, 0.08)',
+                  border: '1px solid rgba(232, 80, 58, 0.25)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 1.5,
                 }}
-              />
-              <Typography variant="caption" sx={{ color: colors.coral, fontWeight: 700, letterSpacing: '0.02em' }}>
-                Payment integration not configured
-              </Typography>
-            </Box>
+              >
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: colors.coral,
+                  }}
+                />
+                <Typography variant="caption" sx={{ color: colors.coral, fontWeight: 700, letterSpacing: '0.02em' }}>
+                  Admin Notice: Payment integration not configured
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
 

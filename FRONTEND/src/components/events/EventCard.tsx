@@ -15,7 +15,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import { Link } from 'react-router-dom';
 import type { Event } from '../../types';
-import { eventCoverUrl } from '../../utils/eventMedia';
+import { eventCoverUrl, DEFAULT_EVENT_POSTER } from '../../utils/eventMedia';
 import { formatKes, formatDate } from '../../utils/format';
 import { colors } from '../../styles/theme';
 
@@ -80,6 +80,11 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
           component="img"
           src={coverUrl}
           alt={event.title}
+          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+            if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+              e.currentTarget.src = DEFAULT_EVENT_POSTER;
+            }
+          }}
           sx={{
             width: '100%',
             maxHeight: '75vh',
@@ -170,6 +175,11 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
               className="card-img"
               src={coverUrl}
               alt={event.title}
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+                  e.currentTarget.src = DEFAULT_EVENT_POSTER;
+                }
+              }}
               sx={{
                 width: '100%',
                 height: '100%',
@@ -325,6 +335,11 @@ export default function EventCard({ event, viewMode = 'grid' }: EventCardProps) 
             src={coverUrl}
             alt={event.title}
             loading="lazy"
+            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+              if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+                e.currentTarget.src = DEFAULT_EVENT_POSTER;
+              }
+            }}
             sx={{
               width: '100%',
               height: '100%',

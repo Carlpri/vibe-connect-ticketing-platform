@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { AppError } from '../errors/AppError';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -79,9 +80,44 @@ export function parseAndValidateBase64Image(dataUrl: string): ValidatedImage {
 }
 
 /**
- * Saves a validated image buffer to the local uploads directory.
+ * Saves a validated image buffer to persistent storage (Supabase Storage if configured, or local uploads directory).
  */
 export async function saveImageToUploads(image: ValidatedImage, subDir: string = 'flyers'): Promise<string> {
+  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+  const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY)?.trim();
+  const bucketName = process.env.SUPABASE_STORAGE_BUCKET?.trim() || 'flyers';
+
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false },
+      });
+      const filename = `${crypto.randomUUID()}.${image.extension}`;
+
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .upload(filename, image.buffer, {
+          contentType: image.mimeType,
+          upsert: true,
+        });
+
+      if (error) {
+        console.error('⚠️ Supabase Storage upload error, falling back to local disk:', error.message);
+      } else {
+        const { data: publicData } = supabase.storage
+          .from(bucketName)
+          .getPublicUrl(filename);
+
+        if (publicData?.publicUrl) {
+          return publicData.publicUrl;
+        }
+      }
+    } catch (supabaseError: any) {
+      console.error('⚠️ Supabase Storage exception, falling back to local disk:', supabaseError?.message || supabaseError);
+    }
+  }
+
+  // Fallback to local uploads directory (for offline development or when cloud storage is unconfigured)
   const uploadsDir = path.join(getUploadsDirectory(), subDir);
   await fs.promises.mkdir(uploadsDir, { recursive: true });
 

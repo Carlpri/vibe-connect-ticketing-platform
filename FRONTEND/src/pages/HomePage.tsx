@@ -22,7 +22,7 @@ import HomeEventRail from '../components/home/HomeEventRail';
 import HomeSectionHeader from '../components/home/HomeSectionHeader';
 import { useEventsList } from '../hooks/useEventsList';
 import { colors } from '../styles/theme';
-import { formatFlyerUrl } from '../utils/eventMedia';
+import { formatFlyerUrl, DEFAULT_EVENT_POSTER } from '../utils/eventMedia';
 import { formatKes } from '../utils/format';
 
 const CATEGORIES = [
@@ -422,6 +422,11 @@ export default function HomePage() {
                         component="img"
                         src={flyerUrl}
                         alt={evt.title}
+                        onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                          if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+                            e.currentTarget.src = DEFAULT_EVENT_POSTER;
+                          }
+                        }}
                         sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                       <Box
@@ -673,6 +678,11 @@ export default function HomePage() {
                 component="img"
                 src={selectedFlyer.url}
                 alt={selectedFlyer.event.title}
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                  if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+                    e.currentTarget.src = DEFAULT_EVENT_POSTER;
+                  }
+                }}
                 sx={{
                   maxWidth: '100%',
                   maxHeight: '68vh',

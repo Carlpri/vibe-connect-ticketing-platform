@@ -15,6 +15,12 @@ const envSchema = z.object({
   // Application & Frontend URLs
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
+  // Supabase Storage Configuration (Persistent Cloud Uploads)
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_ANON_KEY: z.string().optional(),
+  SUPABASE_STORAGE_BUCKET: z.string().default('flyers'),
+
   // Payment Provider Configuration (Paystack)
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_PUBLIC_KEY: z.string().optional(),

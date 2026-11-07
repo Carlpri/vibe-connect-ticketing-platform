@@ -38,7 +38,7 @@ import { formatDate, formatKes } from '../utils/format';
 import type { Event } from '../types';
 import { colors } from '../styles/theme';
 import PageMeta from '../components/common/PageMeta';
-import { eventCoverUrl, formatFlyerUrl, isEventMediaUrl } from '../utils/eventMedia';
+import { eventCoverUrl, formatFlyerUrl, isEventMediaUrl, DEFAULT_EVENT_POSTER } from '../utils/eventMedia';
 import { AnalyticsEvents } from '../utils/analytics';
 
 export default function EventDetailPage() {
@@ -198,6 +198,11 @@ export default function EventDetailPage() {
             component="img"
             src={eventCoverUrl(event.coverImage, event.flyers?.[0]?.url)}
             alt={event.title}
+            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+              if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+                e.currentTarget.src = DEFAULT_EVENT_POSTER;
+              }
+            }}
             sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
 
@@ -528,6 +533,11 @@ export default function EventDetailPage() {
                           component="img"
                           src={fullUrl}
                           alt={`${event.title} Poster ${index + 1}`}
+                          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                            if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+                              e.currentTarget.src = DEFAULT_EVENT_POSTER;
+                            }
+                          }}
                           sx={{
                             width: '100%',
                             height: '100%',
@@ -760,7 +770,7 @@ export default function EventDetailPage() {
                 IMPORTANT ATTENDEE NOTICE
               </Typography>
               <Typography variant="body2" sx={{ color: colors.fg, fontSize: '0.88rem', lineHeight: 1.6 }}>
-                • Ticket reservations remain unpaid until a configured payment provider verifies the transaction.<br />
+                • Instant ticket issuance and reservation confirmation upon registration.<br />
                 • Digital tickets with live QR code are stored in your account under <strong>My Tickets</strong>.<br />
                 • Fast gate check-in powered by real-time scanner verification.
               </Typography>
@@ -885,6 +895,11 @@ export default function EventDetailPage() {
               component="img"
               src={previewFlyerUrl}
               alt="Official Event Flyer"
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                if (e.currentTarget.src !== DEFAULT_EVENT_POSTER) {
+                  e.currentTarget.src = DEFAULT_EVENT_POSTER;
+                }
+              }}
               sx={{
                 maxWidth: '100%',
                 maxHeight: '80vh',

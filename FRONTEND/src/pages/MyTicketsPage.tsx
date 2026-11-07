@@ -158,7 +158,7 @@ export default function MyTicketsPage() {
         ) : tickets.length === 0 ? (
           <EmptyState
             title="NO TICKETS YET"
-            description="Verified paid tickets appear here after a payment provider integration is configured and confirms your order."
+            description="Your registered event passes and tickets will appear here once booked."
             actionLabel="Discover Events"
             onAction={() => window.location.assign('/events')}
           />

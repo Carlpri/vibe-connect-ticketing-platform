@@ -118,7 +118,7 @@ export default function PaymentModal({
       setStatus('FAILED');
       setMessage(
         error?.response?.data?.message ||
-          'Could not initialize Paystack payment. Ensure payment gateway credentials are configured.'
+          'Could not initialize payment session. Please try again or contact support.'
       );
     }
   };
