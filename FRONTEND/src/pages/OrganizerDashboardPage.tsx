@@ -19,7 +19,7 @@ import {
   Tab,
   Avatar,
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import EventIcon from '@mui/icons-material/Event';
@@ -54,9 +54,11 @@ import { useThemeMode } from '../contexts/ThemeModeContext';
 export default function OrganizerDashboardPage() {
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
+  const location = useLocation();
   const navigate = useNavigate();
   const dashboardTheme = mode;
   const isDark = mode === 'dark';
+  const isEventsPage = location.hash === '#events';
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,9 +85,34 @@ export default function OrganizerDashboardPage() {
     }
   };
 
+  const fetchAllOrganizerEvents = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [upcoming, past] = await Promise.all([
+        eventService.getManagedEvents('upcoming'),
+        eventService.getManagedEvents('past'),
+      ]);
+      const allEvents = new Map([...upcoming.data, ...past.data].map((event) => [event.id, event]));
+      setEvents(
+        [...allEvents.values()].sort(
+          (left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime()
+        )
+      );
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchOrganizerEvents(eventPeriod);
-  }, [user?.id, eventPeriod]);
+    if (isEventsPage) {
+      fetchAllOrganizerEvents();
+    } else {
+      fetchOrganizerEvents(eventPeriod);
+    }
+  }, [user?.id, eventPeriod, isEventsPage]);
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
@@ -257,9 +284,12 @@ export default function OrganizerDashboardPage() {
           flexShrink: 0,
           display: { xs: 'none', md: 'flex' },
           flexDirection: 'column',
-          position: 'sticky',
+          position: 'fixed',
+          left: 0,
           top: 0,
           height: '100vh',
+          overflowY: 'auto',
+          zIndex: 1200,
           p: 2.5,
           borderRight: `1px solid ${isDark ? '#27272A' : colors.border}`,
           bgcolor: isDark ? '#09090B' : colors.cardBg,
@@ -281,13 +311,17 @@ export default function OrganizerDashboardPage() {
             startIcon={<DashboardIcon />}
             sx={{
               justifyContent: 'flex-start',
-              color: isDark ? '#09090B' : colors.limeFg,
-              bgcolor: isDark ? '#D4FF2A' : colors.lime,
+              color: !isEventsPage
+                ? (isDark ? '#09090B' : colors.limeFg)
+                : (isDark ? '#A1A1AA' : colors.mutedFg),
+              bgcolor: !isEventsPage ? (isDark ? '#D4FF2A' : colors.lime) : 'transparent',
               fontWeight: 800,
               px: 1.5,
               py: 1.2,
-              '& .MuiSvgIcon-root': { color: isDark ? '#09090B' : colors.limeFg },
-              '&:hover': { bgcolor: isDark ? '#C4EF1A' : colors.limeLt },
+              '& .MuiSvgIcon-root': {
+                color: !isEventsPage ? (isDark ? '#09090B' : colors.limeFg) : (isDark ? '#A1A1AA' : colors.mutedFg),
+              },
+              '&:hover': { bgcolor: isDark ? '#18181B' : colors.mutedBg },
             }}
           >
             Dashboard
@@ -298,9 +332,13 @@ export default function OrganizerDashboardPage() {
             startIcon={<EventIcon />}
             sx={{
               justifyContent: 'flex-start',
-              color: isDark ? '#A1A1AA' : colors.mutedFg,
+              color: isEventsPage ? (isDark ? '#09090B' : colors.limeFg) : (isDark ? '#A1A1AA' : colors.mutedFg),
+              bgcolor: isEventsPage ? (isDark ? '#D4FF2A' : colors.lime) : 'transparent',
               px: 1.5,
               py: 1.2,
+              '& .MuiSvgIcon-root': {
+                color: isEventsPage ? (isDark ? '#09090B' : colors.limeFg) : (isDark ? '#A1A1AA' : colors.mutedFg),
+              },
               '&:hover': { bgcolor: isDark ? '#18181B' : colors.mutedBg, color: isDark ? '#FAFAFA' : colors.fg },
             }}
           >
@@ -337,9 +375,9 @@ export default function OrganizerDashboardPage() {
         </Button>
       </Box>
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, py: { xs: 2.5, md: 4 }, px: { xs: 2, sm: 3, lg: 5 } }}>
+      <Box component="main" sx={{ flex: 1, minWidth: 0, ml: { xs: 0, md: '252px' }, py: { xs: 2.5, md: 4 }, px: { xs: 2, sm: 3, lg: 5 } }}>
       <Container maxWidth="lg" disableGutters>
-        {user?.role === 'ORGANIZER' && user.organizerApplicationStatus !== 'APPROVED' && (
+        {!isEventsPage && user?.role === 'ORGANIZER' && user.organizerApplicationStatus !== 'APPROVED' && (
           <Alert severity={user.organizerApplicationStatus === 'REJECTED' ? 'warning' : 'info'} sx={{ mb: 3 }}>
             {user.organizerApplicationStatus === 'REJECTED'
               ? 'Your organizer request was not approved. You may prepare drafts, but cannot publish events.'
@@ -347,7 +385,7 @@ export default function OrganizerDashboardPage() {
           </Alert>
         )}
 
-        {user?.role === 'ADMIN' && (
+        {!isEventsPage && user?.role === 'ADMIN' && (
           <Card sx={{ p: 3, mb: 4, border: `1px solid ${colors.border}`, borderRadius: '12px' }}>
             <Typography variant="h5" sx={{ fontWeight: 800, color: colors.fg, mb: 2 }}>
               Organizer approval requests
@@ -426,7 +464,7 @@ export default function OrganizerDashboardPage() {
                   color: colors.fg,
                 }}
               >
-                Organizer Dashboard
+                {isEventsPage ? 'Your Events' : 'Organizer Dashboard'}
               </Typography>
               <Chip
                 label={user?.role === 'ADMIN' ? 'ADMIN' : 'ORGANIZER'}
@@ -441,7 +479,9 @@ export default function OrganizerDashboardPage() {
               />
             </Box>
             <Typography variant="body1" sx={{ color: colors.mutedFg, fontWeight: 500 }}>
-              Welcome back, <strong>{user?.name || 'Creator'}</strong>. Manage your ticket inventory, dates, and live events.
+              {isEventsPage
+                ? 'View and manage all your upcoming and past events.'
+                : <>Welcome back, <strong>{user?.name || 'Creator'}</strong>. Manage your ticket inventory, dates, and live events.</>}
             </Typography>
           </Box>
 
@@ -506,6 +546,7 @@ export default function OrganizerDashboardPage() {
           </Button>
         </Box>
 
+        {!isEventsPage && (<>
         {/* Stats Grid */}
         <Box
           sx={{
@@ -691,6 +732,7 @@ export default function OrganizerDashboardPage() {
             </Alert>
           )}
         </Paper>
+        </>)}
 
         {/* Section: Your Events */}
         <Box id="events" sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -703,20 +745,22 @@ export default function OrganizerDashboardPage() {
               color: colors.fg,
             }}
           >
-            {eventPeriod === 'past'
+            {isEventsPage
+              ? user?.role === 'ADMIN' ? 'All Platform Events' : 'All Your Events'
+              : eventPeriod === 'past'
               ? user?.role === 'ADMIN' ? 'Platform Past Events' : 'Your Past Events'
               : user?.role === 'ADMIN' ? 'Platform Upcoming Events' : 'Your Upcoming Events'} ({events.length})
           </Typography>
           <Button
             size="small"
-            onClick={() => fetchOrganizerEvents(eventPeriod)}
+            onClick={() => isEventsPage ? fetchAllOrganizerEvents() : fetchOrganizerEvents(eventPeriod)}
             sx={{ color: colors.mutedFg, textTransform: 'none', fontWeight: 600 }}
           >
             Refresh
           </Button>
         </Box>
 
-        <Tabs
+        {!isEventsPage && <Tabs
           value={eventPeriod}
           onChange={(_event, value: string) => {
             if (value === 'upcoming' || value === 'past') setEventPeriod(value);
@@ -726,7 +770,7 @@ export default function OrganizerDashboardPage() {
         >
           <Tab value="upcoming" label="Upcoming Events" />
           <Tab value="past" label={user?.role === 'ADMIN' ? 'Past Events' : 'Your Past Events'} />
-        </Tabs>
+        </Tabs>}
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -753,7 +797,9 @@ export default function OrganizerDashboardPage() {
               No Events Found
             </Typography>
             <Typography variant="body2" sx={{ color: colors.mutedFg, mb: 3, maxWidth: 450, mx: 'auto' }}>
-              {eventPeriod === 'past'
+              {isEventsPage
+                ? 'Your events will appear here once they have been created.'
+                : eventPeriod === 'past'
                 ? 'Events that have ended will remain available here for historical reference.'
                 : "You don't have any upcoming events yet. Create an event to start managing ticket sales."}
             </Typography>
@@ -770,7 +816,9 @@ export default function OrganizerDashboardPage() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+              gridTemplateColumns: isEventsPage
+                ? { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' }
+                : { xs: '1fr', md: 'repeat(2, 1fr)' },
               gap: 3,
             }}
           >
@@ -789,7 +837,7 @@ export default function OrganizerDashboardPage() {
                   key={event.id}
                   sx={{
                     display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
+                    flexDirection: isEventsPage ? 'column' : { xs: 'column', sm: 'row' },
                     bgcolor: colors.cardBg,
                     border: `1px solid ${colors.border}`,
                     borderRadius: '12px',
@@ -805,8 +853,8 @@ export default function OrganizerDashboardPage() {
                   <CardMedia
                     component="img"
                     sx={{
-                      width: { xs: '100%', sm: 180 },
-                      height: { xs: 160, sm: 'auto' },
+                      width: isEventsPage ? '100%' : { xs: '100%', sm: 180 },
+                      height: isEventsPage ? 190 : { xs: 160, sm: 'auto' },
                       objectFit: 'cover',
                       bgcolor: colors.ink,
                     }}
