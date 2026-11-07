@@ -15,6 +15,13 @@ const envSchema = z.object({
   // Application & Frontend URLs
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
+  // Cloudinary image storage (preferred for event flyers and posters)
+  CLOUDINARY_URL: z.string().optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER: z.string().optional(),
+
   // Supabase Storage Configuration (Persistent Cloud Uploads)
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
@@ -78,6 +85,11 @@ export const env = {
   JWT_EXPIRES_IN: raw.JWT_EXPIRES_IN || '7d',
   TICKET_QR_SECRET: raw.TICKET_QR_SECRET || raw.JWT_SECRET || 'vibe-connect-default-secret-key-change-in-production',
   FRONTEND_URL: raw.FRONTEND_URL || 'http://localhost:5173',
+  CLOUDINARY_URL: raw.CLOUDINARY_URL || '',
+  CLOUDINARY_CLOUD_NAME: raw.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: raw.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: raw.CLOUDINARY_API_SECRET || '',
+  CLOUDINARY_FOLDER: raw.CLOUDINARY_FOLDER || 'vibe-connect/events',
   // Payment Provider (Paystack)
   PAYSTACK_SECRET_KEY: raw.PAYSTACK_SECRET_KEY || '',
   PAYSTACK_PUBLIC_KEY: raw.PAYSTACK_PUBLIC_KEY || '',

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import https from 'https';
 import { createClient } from '@supabase/supabase-js';
 import { AppError } from '../errors/AppError';
 
@@ -17,6 +18,104 @@ export function getUploadsDirectory(): string {
   return configuredDirectory
     ? path.resolve(configuredDirectory)
     : path.join(process.cwd(), 'uploads');
+}
+
+export function createCloudinarySignature(parameters: Record<string, string | number>, apiSecret: string): string {
+  const signedParameters = Object.entries(parameters)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+
+  return crypto.createHash('sha1').update(`${signedParameters}${apiSecret}`).digest('hex');
+}
+
+async function uploadImageToCloudinary(
+  image: ValidatedImage,
+  cloudName: string,
+  apiKey: string,
+  apiSecret: string,
+  folder: string
+): Promise<string> {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const publicId = crypto.randomUUID();
+  const parameters = { folder, public_id: publicId, timestamp };
+  const signature = createCloudinarySignature(parameters, apiSecret);
+  const boundary = `----vibe-connect-${crypto.randomUUID()}`;
+  const fields: Record<string, string> = {
+    ...Object.fromEntries(Object.entries(parameters).map(([key, value]) => [key, String(value)])),
+    api_key: apiKey,
+    signature,
+  };
+  const bodyParts: Buffer[] = [];
+
+  for (const [key, value] of Object.entries(fields)) {
+    bodyParts.push(
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`)
+    );
+  }
+  bodyParts.push(
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${publicId}.${image.extension}"\r\nContent-Type: ${image.mimeType}\r\n\r\n`
+    ),
+    image.buffer,
+    Buffer.from(`\r\n--${boundary}--\r\n`)
+  );
+  const body = Buffer.concat(bodyParts);
+  const requestUrl = new URL(
+    `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`
+  );
+
+  return new Promise((resolve, reject) => {
+    const request = https.request(
+      requestUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': body.length,
+        },
+      },
+      (response) => {
+        const responseParts: Buffer[] = [];
+        response.on('data', (part: Buffer | string) => {
+          responseParts.push(Buffer.isBuffer(part) ? part : Buffer.from(part));
+        });
+        response.on('error', reject);
+        response.on('end', () => {
+          let result: { secure_url?: string; error?: { message?: string } };
+          try {
+            result = JSON.parse(Buffer.concat(responseParts).toString('utf8'));
+          } catch {
+            reject(new AppError('Cloudinary returned an invalid upload response', 502));
+            return;
+          }
+
+          if (
+            response.statusCode !== undefined &&
+            response.statusCode >= 200 &&
+            response.statusCode < 300 &&
+            typeof result.secure_url === 'string'
+          ) {
+            resolve(result.secure_url);
+            return;
+          }
+
+          console.error('Cloudinary upload failed:', {
+            statusCode: response.statusCode,
+            message: result.error?.message,
+          });
+          reject(new AppError('Flyer upload to Cloudinary failed', 502));
+        });
+      }
+    );
+
+    request.setTimeout(30_000, () => request.destroy(new Error('Cloudinary upload timed out')));
+    request.on('error', (error) => {
+      console.error('Cloudinary upload request failed:', error.message);
+      reject(new AppError('Flyer upload to Cloudinary failed', 502));
+    });
+    request.end(body);
+  });
 }
 
 /**
@@ -80,9 +179,49 @@ export function parseAndValidateBase64Image(dataUrl: string): ValidatedImage {
 }
 
 /**
- * Saves a validated image buffer to persistent storage (Supabase Storage if configured, or local uploads directory).
+ * Saves a validated image to Cloudinary when configured, otherwise to Supabase Storage
+ * or local uploads outside production.
  */
 export async function saveImageToUploads(image: ValidatedImage, subDir: string = 'flyers'): Promise<string> {
+  const cloudinaryUrl = process.env.CLOUDINARY_URL?.trim();
+  const configuredCloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const configuredApiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const configuredApiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+  const directConfiguration = [configuredCloudName, configuredApiKey, configuredApiSecret];
+  const directConfigurationCount = directConfiguration.filter(Boolean).length;
+
+  if (directConfigurationCount > 0 && directConfigurationCount < directConfiguration.length) {
+    throw new AppError('Cloudinary storage is incompletely configured', 500);
+  }
+
+  let cloudName = configuredCloudName;
+  let cloudinaryApiKey = configuredApiKey;
+  let cloudinaryApiSecret = configuredApiSecret;
+
+  if (directConfigurationCount === 0 && cloudinaryUrl) {
+    try {
+      const parsedUrl = new URL(cloudinaryUrl);
+      if (parsedUrl.protocol !== 'cloudinary:') {
+        throw new Error('Unsupported Cloudinary URL protocol');
+      }
+
+      cloudName = parsedUrl.hostname;
+      cloudinaryApiKey = decodeURIComponent(parsedUrl.username);
+      cloudinaryApiSecret = decodeURIComponent(parsedUrl.password);
+    } catch {
+      throw new AppError('CLOUDINARY_URL is invalid', 500);
+    }
+
+    if (!cloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
+      throw new AppError('CLOUDINARY_URL is incomplete', 500);
+    }
+  }
+
+  if (cloudName && cloudinaryApiKey && cloudinaryApiSecret) {
+    const folder = process.env.CLOUDINARY_FOLDER?.trim() || 'vibe-connect/events';
+    return uploadImageToCloudinary(image, cloudName, cloudinaryApiKey, cloudinaryApiSecret, folder);
+  }
+
   const supabaseUrl = process.env.SUPABASE_URL?.trim();
   const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY)?.trim();
   const bucketName = process.env.SUPABASE_STORAGE_BUCKET?.trim() || 'flyers';
@@ -102,22 +241,29 @@ export async function saveImageToUploads(image: ValidatedImage, subDir: string =
         });
 
       if (error) {
-        console.error('⚠️ Supabase Storage upload error, falling back to local disk:', error.message);
-      } else {
-        const { data: publicData } = supabase.storage
-          .from(bucketName)
-          .getPublicUrl(filename);
-
-        if (publicData?.publicUrl) {
-          return publicData.publicUrl;
-        }
+        console.error('Supabase Storage upload error:', error.message);
+        throw new AppError('Flyer upload to persistent storage failed', 500);
       }
-    } catch (supabaseError: any) {
-      console.error('⚠️ Supabase Storage exception, falling back to local disk:', supabaseError?.message || supabaseError);
+
+      const { data: publicData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filename);
+
+      if (!publicData?.publicUrl) {
+        throw new AppError('Persistent storage did not return a flyer URL', 500);
+      }
+
+      return publicData.publicUrl;
+    } catch (supabaseError: unknown) {
+      console.error('Supabase Storage exception:', supabaseError);
+      if (supabaseError instanceof AppError) throw supabaseError;
+      throw new AppError('Flyer upload to persistent storage failed', 500);
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    throw new AppError('Persistent image storage is not configured', 500);
   }
 
-  // Fallback to local uploads directory (for offline development or when cloud storage is unconfigured)
+  // Local uploads are only suitable for development and tests.
   const uploadsDir = path.join(getUploadsDirectory(), subDir);
   await fs.promises.mkdir(uploadsDir, { recursive: true });
 

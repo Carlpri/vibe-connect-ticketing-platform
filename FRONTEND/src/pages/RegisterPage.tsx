@@ -106,7 +106,7 @@ export default function RegisterPage() {
       <Box sx={{ width: '100%', maxWidth: 400, mx: 'auto' }}>
         {/* Brand above heading */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <BrandLogo to="/" size="medium" lightText />
+          <BrandLogo to="/" size="medium" />
         </Box>
 
         {/* Large uppercase heading */}

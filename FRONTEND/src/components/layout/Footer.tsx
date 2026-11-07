@@ -35,7 +35,7 @@ export default function Footer() {
           {/* Column 1: Brand & short description */}
           <Box>
             <Box sx={{ mb: 2 }}>
-              <BrandLogo to="/" size="medium" lightText />
+              <BrandLogo to="/" size="medium" />
             </Box>
             <Typography
               variant="body2"

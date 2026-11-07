@@ -83,7 +83,7 @@ export default function LoginPage() {
       <Box sx={{ width: '100%', maxWidth: 384, mx: 'auto' }}>
         {/* Brand above heading */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <BrandLogo to="/" size="medium" lightText />
+          <BrandLogo to="/" size="medium" />
         </Box>
 
         {/* Large uppercase heading */}

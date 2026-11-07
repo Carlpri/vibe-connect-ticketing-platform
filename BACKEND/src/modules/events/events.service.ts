@@ -356,7 +356,10 @@ export class EventsService {
   static async updateEvent(id: string, user: TokenPayload, input: UpdateEventInput) {
     const existing = await prisma.event.findUnique({
       where: { id },
-      include: { ticketTypes: true },
+      include: {
+        ticketTypes: true,
+        flyers: { orderBy: { order: 'asc' } },
+      },
     });
 
     if (!existing) {
@@ -393,14 +396,19 @@ export class EventsService {
       throw new AppError('An event can have a maximum of 10 promotional flyers', 400);
     }
 
+    const flyersChanged =
+      input.flyers !== undefined &&
+      (input.flyers.length !== existing.flyers.length ||
+        input.flyers.some((url, index) => url !== existing.flyers[index]?.url));
+
     const updatedCover =
       input.coverImage === ''
         ? null
         : input.coverImage ??
-          (input.flyers !== undefined ? input.flyers[0] ?? null : existing.coverImage);
+          (flyersChanged ? input.flyers?.[0] ?? null : existing.coverImage);
 
     const updated = await prisma.$transaction(async (tx) => {
-      if (input.flyers !== undefined) {
+      if (flyersChanged && input.flyers !== undefined) {
         await tx.eventFlyer.deleteMany({ where: { eventId: id } });
         if (input.flyers.length > 0) {
           await tx.eventFlyer.createMany({

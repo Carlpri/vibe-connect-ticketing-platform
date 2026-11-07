@@ -173,6 +173,7 @@ export default function CreateEventPage() {
 
   // Flyer Gallery (up to 10 flyers)
   const [flyers, setFlyers] = useState<Array<{ dataUrl: string; preview: string; id?: string }>>([]);
+  const initialFlyerState = useRef<{ coverImage: string; flyerUrls: string[] } | null>(null);
   const [flyerUploading, setFlyerUploading] = useState(false);
   const flyerInputRef = useRef<HTMLInputElement>(null);
 
@@ -241,6 +242,10 @@ export default function CreateEventPage() {
         } else if (coverIndex > 0) {
           existingFlyers.unshift(existingFlyers.splice(coverIndex, 1)[0]);
         }
+        initialFlyerState.current = {
+          coverImage: event.coverImage || '',
+          flyerUrls: existingFlyers.map((flyer) => flyer.preview),
+        };
         setFlyers(existingFlyers);
       } catch (err: unknown) {
         if (!cancelled) {
@@ -493,12 +498,16 @@ export default function CreateEventPage() {
         : flyerUrls[0];
 
       if (isEditMode && eventId) {
+        const originalFlyerState = initialFlyerState.current;
+        const flyersChanged =
+          !originalFlyerState ||
+          flyerUrls.length !== originalFlyerState.flyerUrls.length ||
+          flyerUrls.some((url, index) => url !== originalFlyerState.flyerUrls[index]);
+        const coverImageChanged = !originalFlyerState || manualCoverImage !== originalFlyerState.coverImage;
         const updatePayload: UpdateEventInput = {
           title: payload.title,
           description: payload.description,
           category: payload.category,
-          coverImage: selectedCoverImage ?? '',
-          flyers: flyerUrls,
           format: payload.format,
           status: payload.status,
           startsAt: payload.startsAt,
@@ -517,6 +526,9 @@ export default function CreateEventPage() {
           bibleVerse: payload.bibleVerse,
           dressCode: payload.dressCode,
         };
+        if (flyersChanged) updatePayload.flyers = flyerUrls;
+        if (coverImageChanged || flyersChanged) updatePayload.coverImage = selectedCoverImage ?? '';
+
         const res = await eventService.updateEvent(eventId, updatePayload);
 
         toast.success('Event updated successfully');
