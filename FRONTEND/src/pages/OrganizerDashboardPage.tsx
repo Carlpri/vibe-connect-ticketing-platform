@@ -49,18 +49,14 @@ import { authService } from '../services/authService';
 import type { OrganizerApplication } from '../types';
 import { getInitials } from '../utils/format';
 import { BrandMark } from '../components/common/BrandLogo';
+import { useThemeMode } from '../contexts/ThemeModeContext';
 
 export default function OrganizerDashboardPage() {
   const { user, logout } = useAuth();
+  const { mode, toggleMode } = useThemeMode();
   const navigate = useNavigate();
-  const [dashboardTheme, setDashboardTheme] = useState<'dark' | 'light'>(() => {
-    try {
-      return window.localStorage.getItem('organizer-dashboard-theme') === 'light' ? 'light' : 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
-  const isDark = dashboardTheme === 'dark';
+  const dashboardTheme = mode;
+  const isDark = mode === 'dark';
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,14 +69,6 @@ export default function OrganizerDashboardPage() {
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
   const [reviewingApplicationId, setReviewingApplicationId] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem('organizer-dashboard-theme', dashboardTheme);
-    } catch {
-      toast.error('Your dashboard theme preference could not be saved.');
-    }
-  }, [dashboardTheme]);
 
   const fetchOrganizerEvents = async (period: 'upcoming' | 'past') => {
     setLoading(true);
@@ -232,6 +220,8 @@ export default function OrganizerDashboardPage() {
           '& .MuiTypography-body2, & .MuiTypography-caption, & .MuiTypography-subtitle2': {
             color: '#A1A1AA',
           },
+          '& [data-ticket-summary] .MuiTypography-body2': { color: '#FAFAFA' },
+          '& [data-ticket-summary] .MuiTypography-caption': { color: '#A1A1AA' },
           '& .MuiSvgIcon-root': { color: '#A1A1AA' },
           '& .MuiButton-contained': {
             bgcolor: '#D4FF2A',
@@ -459,7 +449,7 @@ export default function OrganizerDashboardPage() {
             <Tooltip title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
               <IconButton
                 aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                onClick={() => setDashboardTheme(isDark ? 'light' : 'dark')}
+                onClick={toggleMode}
                 sx={{
                   color: isDark ? '#D4FF2A' : colors.fg,
                   border: `1px solid ${isDark ? '#27272A' : colors.border}`,
@@ -879,14 +869,22 @@ export default function OrganizerDashboardPage() {
 
                     {/* Ticket Tiers overview */}
                     <Box
+                      data-ticket-summary
                       sx={{
-                        bgcolor: colors.mutedBg,
+                        bgcolor: isDark ? '#09090B' : colors.mutedBg,
+                        border: isDark ? '1px solid #27272A' : '1px solid transparent',
                         borderRadius: '8px',
                         p: 1.2,
                         mb: 2,
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
+                        '& .MuiTypography-root': {
+                          color: isDark ? '#FAFAFA' : colors.fg,
+                        },
+                        '& .MuiTypography-caption': {
+                          color: isDark ? '#A1A1AA' : colors.mutedFg,
+                        },
                       }}
                     >
                       <Box>

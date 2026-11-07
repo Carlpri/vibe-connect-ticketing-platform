@@ -20,14 +20,19 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 import { Link, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useThemeMode } from '../../contexts/ThemeModeContext';
 import { getInitials } from '../../utils/format';
 import { colors } from '../../styles/theme';
 import BrandLogo from '../common/BrandLogo';
 
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
+  const { mode, toggleMode } = useThemeMode();
+  const isDark = mode === 'dark';
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -107,6 +112,21 @@ export default function Navbar() {
 
           {/* Right-side controls */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, ml: { xs: 'auto', md: 0 } }}>
+            <IconButton
+              onClick={toggleMode}
+              size="small"
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              sx={{
+                color: isDark ? '#D4FF2A' : colors.fg,
+                border: `1px solid ${isDark ? '#3F3F46' : colors.border}`,
+                borderRadius: '8px',
+                p: 0.8,
+              }}
+            >
+              {isDark ? <LightModeIcon sx={{ fontSize: 20 }} /> : <DarkModeIcon sx={{ fontSize: 20 }} />}
+            </IconButton>
+
             {/* If organizer, show + Create Event button */}
             {isOrganizer && (
               <Button

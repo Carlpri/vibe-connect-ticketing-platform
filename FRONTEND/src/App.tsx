@@ -1,8 +1,8 @@
-import type { PropsWithChildren } from 'react';
+import { useMemo, type PropsWithChildren } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Box } from '@mui/material';
+import { Box, GlobalStyles } from '@mui/material';
 import { Toaster } from 'react-hot-toast';
 import theme from './styles/theme';
 import { AuthProvider } from './contexts/AuthContext';
@@ -30,12 +30,23 @@ import CreateEventPage from './pages/CreateEventPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LegalDocumentPage from './pages/legal/LegalDocumentPage';
 import AnalyticsProvider from './components/AnalyticsProvider';
+import { ThemeModeProvider, useThemeMode } from './contexts/ThemeModeContext';
 
 function AppLayout({ children }: PropsWithChildren) {
   const isOrganizerDashboard = useLocation().pathname === '/organizer';
+  const { mode } = useThemeMode();
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box
+      className={`app-theme-${mode}`}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        bgcolor: mode === 'dark' ? '#09090B' : 'background.default',
+        color: mode === 'dark' ? '#FAFAFA' : 'text.primary',
+      }}
+    >
       {!isOrganizerDashboard && <Navbar />}
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0, overflowX: 'hidden' }}>
         {children}
@@ -48,8 +59,77 @@ function AppLayout({ children }: PropsWithChildren) {
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeModeProvider>
+      <AppTheme />
+    </ThemeModeProvider>
+  );
+}
+
+function AppTheme() {
+  const { mode } = useThemeMode();
+  const activeTheme = useMemo(
+    () =>
+      createTheme(theme, {
+        palette:
+          mode === 'dark'
+            ? {
+                mode: 'dark',
+                background: { default: '#09090B', paper: '#18181B' },
+                text: { primary: '#FAFAFA', secondary: '#A1A1AA' },
+                divider: '#27272A',
+              }
+            : { mode: 'light' },
+      }),
+    [mode]
+  );
+
+  return (
+    <ThemeProvider theme={activeTheme}>
       <CssBaseline />
+      <GlobalStyles
+        styles={{
+          '.app-theme-dark': { colorScheme: 'dark' },
+          '.app-theme-dark main > .MuiBox-root': {
+            backgroundColor: '#09090B',
+            color: '#FAFAFA',
+          },
+          '.app-theme-dark .MuiAppBar-root': {
+            bgcolor: 'rgba(9,9,11,0.94)',
+            color: '#FAFAFA',
+            borderColor: '#27272A',
+          },
+          '.app-theme-dark .MuiAppBar-root .MuiButton-root': { color: '#FAFAFA' },
+          '.app-theme-dark .MuiAppBar-root .MuiButton-root.active': {
+            color: '#09090B',
+            backgroundColor: '#D4FF2A',
+          },
+          '.app-theme-dark .MuiAppBar-root .MuiButton-contained': {
+            color: '#09090B',
+            backgroundColor: '#D4FF2A',
+          },
+          '.app-theme-dark .MuiCard-root, .app-theme-dark .MuiPaper-root, .app-theme-dark .MuiMenu-paper, .app-theme-dark .MuiDrawer-paper, .app-theme-dark .MuiDialog-paper':
+            {
+              backgroundColor: '#18181B',
+              color: '#FAFAFA',
+              borderColor: '#27272A',
+              backgroundImage: 'none',
+            },
+          '.app-theme-dark .MuiTypography-root': { color: '#FAFAFA' },
+          '.app-theme-dark .MuiTypography-body2, .app-theme-dark .MuiTypography-caption, .app-theme-dark .MuiTypography-subtitle2':
+            { color: '#A1A1AA' },
+          '.app-theme-dark .MuiInputBase-root': {
+            bgcolor: '#09090B',
+            color: '#FAFAFA',
+          },
+          '.app-theme-dark .MuiOutlinedInput-notchedOutline': { borderColor: '#3F3F46' },
+          '.app-theme-dark .MuiInputLabel-root': { color: '#A1A1AA' },
+          '.app-theme-dark .MuiButton-outlined': { color: '#FAFAFA', borderColor: '#3F3F46' },
+          '.app-theme-dark .MuiDivider-root': { borderColor: '#27272A' },
+          '.app-theme-dark .MuiTab-root': { color: '#A1A1AA' },
+          '.app-theme-dark .MuiTab-root.Mui-selected': { color: '#D4FF2A' },
+          '.app-theme-dark .MuiTabs-indicator': { backgroundColor: '#D4FF2A' },
+        }}
+      />
       <AuthProvider>
         <BrowserRouter>
           <AnalyticsProvider>
