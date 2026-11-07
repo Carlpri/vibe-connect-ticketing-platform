@@ -17,9 +17,16 @@ import {
   Paper,
   Tabs,
   Tab,
+  Avatar,
 } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventIcon from '@mui/icons-material/Event';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import LogoutIcon from '@mui/icons-material/Logout';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PaymentsIcon from '@mui/icons-material/Payments';
@@ -40,9 +47,20 @@ import { formatEventDate, formatKes } from '../utils/format';
 import { ticketService } from '../services/ticketService';
 import { authService } from '../services/authService';
 import type { OrganizerApplication } from '../types';
+import { getInitials } from '../utils/format';
+import { BrandMark } from '../components/common/BrandLogo';
 
 export default function OrganizerDashboardPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [dashboardTheme, setDashboardTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return window.localStorage.getItem('organizer-dashboard-theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const isDark = dashboardTheme === 'dark';
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +73,14 @@ export default function OrganizerDashboardPage() {
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
   const [reviewingApplicationId, setReviewingApplicationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('organizer-dashboard-theme', dashboardTheme);
+    } catch {
+      toast.error('Your dashboard theme preference could not be saved.');
+    }
+  }, [dashboardTheme]);
 
   const fetchOrganizerEvents = async (period: 'upcoming' | 'past') => {
     setLoading(true);
@@ -160,6 +186,11 @@ export default function OrganizerDashboardPage() {
     }
   };
 
+  const handleSignOut = () => {
+    logout();
+    navigate('/login');
+  };
+
   // Compute metrics
   const totalEvents = events.length;
   const totalCapacity = events.reduce(
@@ -181,9 +212,143 @@ export default function OrganizerDashboardPage() {
   );
 
   return (
-    <Box sx={{ minHeight: '90vh', bgcolor: colors.bg, py: { xs: 4, md: 6 } }}>
-      <Container maxWidth="lg">
+    <Box
+      data-dashboard-theme={dashboardTheme}
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        bgcolor: isDark ? '#09090B' : colors.bg,
+        color: isDark ? '#FAFAFA' : colors.fg,
+        transition: 'background-color 180ms ease, color 180ms ease',
+        '&[data-dashboard-theme="dark"]': {
+          '& .MuiCard-root, & .MuiPaper-root': {
+            bgcolor: '#18181B',
+            color: '#FAFAFA',
+            borderColor: '#27272A',
+            backgroundImage: 'none',
+            boxShadow: 'none',
+          },
+          '& .MuiTypography-root': { color: '#FAFAFA' },
+          '& .MuiTypography-body2, & .MuiTypography-caption, & .MuiTypography-subtitle2': {
+            color: '#A1A1AA',
+          },
+          '& .MuiSvgIcon-root': { color: '#A1A1AA' },
+          '& .MuiButton-contained': {
+            bgcolor: '#D4FF2A',
+            color: '#09090B',
+            '&:hover': { bgcolor: '#C4EF1A' },
+          },
+          '& .MuiButton-outlined': {
+            borderColor: '#3F3F46',
+            color: '#FAFAFA',
+            '&:hover': { borderColor: '#D4FF2A', bgcolor: 'rgba(212,255,42,0.06)' },
+          },
+          '& .MuiOutlinedInput-root': {
+            bgcolor: '#09090B',
+            color: '#FAFAFA',
+            '& fieldset': { borderColor: '#3F3F46' },
+            '&:hover fieldset': { borderColor: '#71717A' },
+            '&.Mui-focused fieldset': { borderColor: '#D4FF2A' },
+          },
+          '& .MuiInputLabel-root': { color: '#A1A1AA' },
+          '& .MuiTabs-indicator': { bgcolor: '#D4FF2A' },
+          '& .MuiTab-root': { color: '#A1A1AA' },
+          '& .MuiTab-root.Mui-selected': { color: '#D4FF2A' },
+          '& .MuiDivider-root': { borderColor: '#27272A' },
+          '& .MuiChip-root': { borderColor: '#3F3F46' },
+          '& .MuiAlert-root': { borderColor: '#3F3F46' },
+        },
+      }}
+    >
+      <Box
+        component="aside"
+        sx={{
+          width: 252,
+          flexShrink: 0,
+          display: { xs: 'none', md: 'flex' },
+          flexDirection: 'column',
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          p: 2.5,
+          borderRight: `1px solid ${isDark ? '#27272A' : colors.border}`,
+          bgcolor: isDark ? '#09090B' : colors.cardBg,
+        }}
+      >
+        <Box sx={{ mb: 4, px: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <BrandMark size={42} />
+          <Typography sx={{ color: isDark ? '#71717A' : colors.mutedFg, fontSize: '0.68rem', fontWeight: 700 }}>
+            EVENT MANAGEMENT
+          </Typography>
+        </Box>
+        <Typography sx={{ px: 1, mb: 1.5, color: isDark ? '#71717A' : colors.mutedFg, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.1em' }}>
+          ORGANIZER WORKSPACE
+        </Typography>
+        <Box sx={{ display: 'grid', gap: 0.7 }}>
+          <Button
+            component={Link}
+            to="/organizer"
+            startIcon={<DashboardIcon />}
+            sx={{
+              justifyContent: 'flex-start',
+              color: isDark ? '#09090B' : colors.limeFg,
+              bgcolor: isDark ? '#D4FF2A' : colors.lime,
+              fontWeight: 800,
+              px: 1.5,
+              py: 1.2,
+              '& .MuiSvgIcon-root': { color: isDark ? '#09090B' : colors.limeFg },
+              '&:hover': { bgcolor: isDark ? '#C4EF1A' : colors.limeLt },
+            }}
+          >
+            Dashboard
+          </Button>
+          <Button
+            component={Link}
+            to="/organizer#events"
+            startIcon={<EventIcon />}
+            sx={{
+              justifyContent: 'flex-start',
+              color: isDark ? '#A1A1AA' : colors.mutedFg,
+              px: 1.5,
+              py: 1.2,
+              '&:hover': { bgcolor: isDark ? '#18181B' : colors.mutedBg, color: isDark ? '#FAFAFA' : colors.fg },
+            }}
+          >
+            Your events
+          </Button>
+          <Button
+            component={Link}
+            to="/create-event"
+            startIcon={<AddIcon />}
+            sx={{
+              justifyContent: 'flex-start',
+              color: isDark ? '#A1A1AA' : colors.mutedFg,
+              px: 1.5,
+              py: 1.2,
+              '&:hover': { bgcolor: isDark ? '#18181B' : colors.mutedBg, color: isDark ? '#FAFAFA' : colors.fg },
+            }}
+          >
+            Create event
+          </Button>
+        </Box>
+        <Box sx={{ flex: 1 }} />
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<LogoutIcon />}
+          onClick={handleSignOut}
+          sx={{
+            justifyContent: 'flex-start',
+            borderColor: isDark ? '#3F3F46' : colors.border,
+            color: isDark ? '#FAFAFA' : colors.fg,
+          }}
+        >
+          Sign out
+        </Button>
+      </Box>
 
+      <Box component="main" sx={{ flex: 1, minWidth: 0, py: { xs: 2.5, md: 4 }, px: { xs: 2, sm: 3, lg: 5 } }}>
+      <Container maxWidth="lg" disableGutters>
         {user?.role === 'ORGANIZER' && user.organizerApplicationStatus !== 'APPROVED' && (
           <Alert severity={user.organizerApplicationStatus === 'REJECTED' ? 'warning' : 'info'} sx={{ mb: 3 }}>
             {user.organizerApplicationStatus === 'REJECTED'
@@ -290,30 +455,64 @@ export default function OrganizerDashboardPage() {
             </Typography>
           </Box>
 
-          <Button
-            component={Link}
-            to="/create-event"
-            variant="contained"
-            size="large"
-            startIcon={<AddIcon />}
-            sx={{
-              bgcolor: colors.lime,
-              color: colors.limeFg,
-              fontWeight: 800,
-              fontSize: '0.92rem',
-              letterSpacing: '0.02em',
-              textTransform: 'uppercase',
-              px: 3,
-              py: 1.4,
-              borderRadius: '8px',
-              boxShadow: '0 4px 14px rgba(181, 224, 42, 0.4)',
-              '&:hover': {
-                bgcolor: colors.limeLt,
-                boxShadow: '0 6px 20px rgba(181, 224, 42, 0.6)',
-              },
-            }}
-          >
-            Create New Event
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
+            <Tooltip title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+              <IconButton
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                onClick={() => setDashboardTheme(isDark ? 'light' : 'dark')}
+                sx={{
+                  color: isDark ? '#D4FF2A' : colors.fg,
+                  border: `1px solid ${isDark ? '#27272A' : colors.border}`,
+                  borderRadius: '8px',
+                }}
+              >
+                {isDark ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="You’re all caught up">
+              <IconButton
+                aria-label="Notifications"
+                onClick={() => toast('You’re all caught up.')}
+                sx={{ color: isDark ? '#A1A1AA' : colors.mutedFg }}
+              >
+                <NotificationsNoneIcon />
+              </IconButton>
+            </Tooltip>
+            <Avatar sx={{ width: 38, height: 38, bgcolor: '#D4FF2A', color: '#09090B', fontWeight: 800 }}>
+              {getInitials(user?.name || 'Creator')}
+            </Avatar>
+            <Button
+              component={Link}
+              to="/create-event"
+              variant="contained"
+              size="large"
+              startIcon={<AddIcon />}
+              sx={{
+                bgcolor: isDark ? '#D4FF2A' : colors.lime,
+                color: isDark ? '#09090B' : colors.limeFg,
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                px: 2.5,
+                py: 1.2,
+                borderRadius: '8px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Create New Event
+            </Button>
+          </Box>
+        </Box>
+        <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 3 }}>
+          <Button component={Link} to="/organizer#events" startIcon={<EventIcon />} size="small" sx={{ color: isDark ? '#A1A1AA' : colors.mutedFg }}>
+            Events
+          </Button>
+          <Button component={Link} to="/create-event" startIcon={<AddIcon />} size="small" sx={{ color: isDark ? '#A1A1AA' : colors.mutedFg }}>
+            Create
+          </Button>
+          <Button onClick={handleSignOut} startIcon={<LogoutIcon />} size="small" sx={{ color: isDark ? '#A1A1AA' : colors.mutedFg }}>
+            Sign out
           </Button>
         </Box>
 
@@ -504,7 +703,7 @@ export default function OrganizerDashboardPage() {
         </Paper>
 
         {/* Section: Your Events */}
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box id="events" sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography
             variant="h5"
             sx={{
@@ -788,6 +987,7 @@ export default function OrganizerDashboardPage() {
           </Box>
         )}
       </Container>
+      </Box>
     </Box>
   );
 }

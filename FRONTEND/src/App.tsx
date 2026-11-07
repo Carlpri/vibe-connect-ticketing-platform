@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import type { PropsWithChildren } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box } from '@mui/material';
@@ -30,6 +31,21 @@ import NotFoundPage from './pages/NotFoundPage';
 import LegalDocumentPage from './pages/legal/LegalDocumentPage';
 import AnalyticsProvider from './components/AnalyticsProvider';
 
+function AppLayout({ children }: PropsWithChildren) {
+  const isOrganizerDashboard = useLocation().pathname === '/organizer';
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
+      {!isOrganizerDashboard && <Navbar />}
+      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, overflowX: 'hidden' }}>
+        {children}
+      </Box>
+      {!isOrganizerDashboard && <Footer />}
+      {!isOrganizerDashboard && <MobileBottomNav />}
+    </Box>
+  );
+}
+
 export default function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -37,9 +53,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <AnalyticsProvider>
-          <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
-            <Navbar />
-            <Box component="main" sx={{ flexGrow: 1, minWidth: 0, overflowX: 'hidden' }}>
+            <AppLayout>
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/events" element={<EventsPage />} />
@@ -103,10 +117,7 @@ export default function App() {
                 <Route path="/organizer-agreement" element={<LegalDocumentPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
-            </Box>
-            <Footer />
-            <MobileBottomNav />
-          </Box>
+            </AppLayout>
           </AnalyticsProvider>
           <Toaster
             position="bottom-right"
